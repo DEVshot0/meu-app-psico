@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
 import MainLayout from '../components/MainLayout';
 import SquareCard from '../components/SquareCard';
 import { Picker } from '@react-native-picker/picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const mockProfissionais = [
   { id: 1, nome: 'Dra. Ana Clara' },
@@ -21,6 +22,15 @@ const PlanosScreen = ({ navigation }) => {
     tipo: '',
     profissional: '',
   });
+  const [userLevel, setUserLevel] = useState(null);
+
+  useEffect(() => {
+    const fetchUserLevel = async () => {
+      const level = await AsyncStorage.getItem('userLevel');
+      setUserLevel(Number(level));
+    };
+    fetchUserLevel();
+  }, []);
 
   const handleVoltar = () => {
     setSelectedAction(null);
@@ -33,6 +43,9 @@ const PlanosScreen = ({ navigation }) => {
     alert('Plano cadastrado com sucesso!');
     handleVoltar();
   };
+
+  // Verifica se o usuário pode criar planos (níveis 1 e 2)
+  const canCreatePlans = userLevel === 1 || userLevel === 2;
 
   return (
     <MainLayout 
@@ -98,11 +111,14 @@ const PlanosScreen = ({ navigation }) => {
         ) : (
           <>
             <View style={styles.grid}>
-              <SquareCard
-                iconName="add-outline"
-                description="Criar Plano"
-                onPress={() => setSelectedAction('Cadastrar')}
-              />
+              {/* Mostra o card de criar apenas para níveis 1 e 2 */}
+              {canCreatePlans && (
+                <SquareCard
+                  iconName="add-outline"
+                  description="Criar Plano"
+                  onPress={() => setSelectedAction('Cadastrar')}
+                />
+              )}
               <SquareCard
                 iconName="document-outline"
                 description="Plano Existente"
@@ -118,8 +134,6 @@ const PlanosScreen = ({ navigation }) => {
                 description="Plano de Avaliação"
                 onPress={() => setSelectedAction('Selecionar Avaliação')}
               />
-            </View>
-            <View style={styles.centerCardWrapper}>
               <SquareCard
                 iconName="arrow-back-outline"
                 description="Voltar"

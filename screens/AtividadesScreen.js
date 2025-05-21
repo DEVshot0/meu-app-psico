@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
 import MainLayout from '../components/MainLayout';
 import SquareCard from '../components/SquareCard';
 import { Picker } from '@react-native-picker/picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const mockPacientes = ['Paciente 1', 'Paciente 2', 'Paciente 3'];
 const mockAtividades = ['Atividade A', 'Atividade B', 'Atividade C'];
@@ -13,6 +14,15 @@ const AtividadesScreen = ({ navigation }) => {
   const [selectedPaciente, setSelectedPaciente] = useState('');
   const [selectedAtividade, setSelectedAtividade] = useState('');
   const [form, setForm] = useState({ nome: '', tipo: '', profissional: '' });
+  const [userLevel, setUserLevel] = useState(null);
+
+  useEffect(() => {
+    const fetchUserLevel = async () => {
+      const level = await AsyncStorage.getItem('userLevel');
+      setUserLevel(Number(level));
+    };
+    fetchUserLevel();
+  }, []);
 
   const handleVoltar = () => {
     setSelectedAction(null);
@@ -55,6 +65,9 @@ const AtividadesScreen = ({ navigation }) => {
       </TouchableOpacity>
     </ScrollView>
   );
+
+  // Verifica se o usuário pode cadastrar atividades (níveis 1 e 2)
+  const canCreateActivities = userLevel === 1 || userLevel === 2;
 
   return (
     <MainLayout 
@@ -140,11 +153,14 @@ const AtividadesScreen = ({ navigation }) => {
         ) : (
           <>
             <View style={styles.grid}>
-              <SquareCard
-                iconName="add-outline"
-                description="Cadastrar Atividades"
-                onPress={() => setSelectedAction('Cadastrar')}
-              />
+              {/* Mostra o card de cadastrar apenas para níveis 1 e 2 */}
+              {canCreateActivities && (
+                <SquareCard
+                  iconName="add-outline"
+                  description="Cadastrar Atividades"
+                  onPress={() => setSelectedAction('Cadastrar')}
+                />
+              )}
               <SquareCard
                 iconName="eye-outline"
                 description="Ver Atividades"
