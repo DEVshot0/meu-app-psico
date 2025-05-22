@@ -92,7 +92,7 @@ const LoginScreen = ({ navigation }) => {
       if (response.ok) {
         const userId = data["user id"];
         // MODIFICAÇÃO AQUI - sempre salva level 4 para teste
-        const level = 3; // Mock para teste, substitui data.level
+        const level = data.level; // Mock para teste, substitui data.level
         
         await AsyncStorage.setItem('userId', String(userId));
         await AsyncStorage.setItem('userLevel', String(level));
@@ -107,6 +107,8 @@ const LoginScreen = ({ navigation }) => {
       alert(`Erro de conexão: ${error.message}`);
     }
   };
+
+  
   
   return (
     <KeyboardAvoidingView

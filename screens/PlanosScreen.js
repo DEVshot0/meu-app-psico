@@ -1,90 +1,227 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Alert } from 'react-native';
 import MainLayout from '../components/MainLayout';
 import SquareCard from '../components/SquareCard';
 import { Picker } from '@react-native-picker/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const mockProfissionais = [
-  { id: 1, nome: 'Dra. Ana Clara' },
-  { id: 2, nome: 'Dr. Marcos Silva' },
-  { id: 3, nome: 'Dra. Fernanda Rocha' },
-  { id: 4, nome: 'Dr. Lucas Almeida' },
-];
-
-const mockPlanos = ['Plano 1', 'Plano 2', 'Plano 3', 'Plano 4'];
-
 const PlanosScreen = ({ navigation }) => {
   const [selectedAction, setSelectedAction] = useState(null);
   const [selectedPlano, setSelectedPlano] = useState('');
-  const [form, setForm] = useState({
-    nome: '',
-    tipo: '',
-    profissional: '',
-  });
+  const [form, setForm] = useState({ nome: '', tipo: '', profissional: '', paciente: '' });
+  const [vinculo, setVinculo] = useState({ planoId: '', comportamentoId: '' });
   const [userLevel, setUserLevel] = useState(null);
+  const [pacientes, setPacientes] = useState([]);
+  const [planos, setPlanos] = useState([]);
+  const [comportamentos, setComportamentos] = useState([]);
 
   useEffect(() => {
     const fetchUserLevel = async () => {
       const level = await AsyncStorage.getItem('userLevel');
       setUserLevel(Number(level));
     };
+
+    const fetchPacientes = async () => {
+      try {
+        const response = await fetch('https://iscdeploy.pythonanywhere.com/api/v1/patient/', {
+          method: 'GET',
+          headers: {
+            'Referer': 'https://iscdeploy.pythonanywhere.com/',
+            'Accept': 'application/json'
+          },
+          credentials: 'include'
+        });
+
+        if (!response.ok) throw new Error('Erro ao buscar pacientes');
+        const data = await response.json();
+        setPacientes(data);
+      } catch (err) {
+        console.error('Erro ao carregar pacientes:', err);
+      }
+    };
+
+    const fetchPlanos = async () => {
+      try {
+        const response = await fetch('https://iscdeploy.pythonanywhere.com/api/v1/plans/full/', {
+          method: 'GET',
+          headers: {
+            'Referer': 'https://iscdeploy.pythonanywhere.com/',
+            'Accept': 'application/json'
+          },
+          credentials: 'include'
+        });
+
+        if (!response.ok) throw new Error('Erro ao buscar planos');
+        const data = await response.json();
+        setPlanos(data);
+      } catch (error) {
+        console.error('Erro ao carregar planos:', error);
+      }
+    };
+
+    const fetchComportamentos = async () => {
+      try {
+        const res = await fetch('https://iscdeploy.pythonanywhere.com/api/v1/behaviors/', {
+          method: 'GET',
+          headers: {
+            'Referer': 'https://iscdeploy.pythonanywhere.com/',
+            'Accept': 'application/json'
+          },
+          credentials: 'include'
+        });
+
+        const data = await res.json();
+        setComportamentos(data);
+      } catch (err) {
+        console.error('Erro ao carregar comportamentos:', err);
+      }
+    };
+
     fetchUserLevel();
+    fetchPacientes();
+    fetchPlanos();
+    fetchComportamentos();
   }, []);
 
   const handleVoltar = () => {
     setSelectedAction(null);
-    setForm({ nome: '', tipo: '', profissional: '' });
+    setForm({ nome: '', tipo: '', profissional: '', paciente: '' });
+    setVinculo({ planoId: '', comportamentoId: '' });
     setSelectedPlano('');
   };
 
-  const handleCadastroPlano = () => {
-    console.log('Novo plano:', form);
-    alert('Plano cadastrado com sucesso!');
-    handleVoltar();
+  const handleCadastroPlano = async () => {
+    if (!form.nome || !form.tipo || !form.paciente) {
+      Alert.alert('Erro', 'Preencha todos os campos!');
+      return;
+    }
+
+    try {
+      const csrfToken = await AsyncStorage.getItem('csrfToken');
+      if (!csrfToken) {
+        Alert.alert('Erro', 'Token CSRF não encontrado. Faça login novamente.');
+        return;
+      }
+
+      const response = await fetch('https://iscdeploy.pythonanywhere.com/api/v1/intervention_plan/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Referer': 'https://iscdeploy.pythonanywhere.com/',
+          'X-CSRFToken': csrfToken,
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          plan_name: form.nome,
+          plan_type: form.tipo,
+          patient_id: form.paciente
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Erro ao cadastrar (raw response):', errorText);
+        Alert.alert('Erro ao cadastrar plano', errorText);
+        return;
+      }
+
+      Alert.alert('Sucesso', 'Plano cadastrado com sucesso!');
+      handleVoltar();
+    } catch (error) {
+      console.error('Erro na requisição:', error);
+      Alert.alert('Erro na requisição', error.message);
+    }
   };
 
-  // Verifica se o usuário pode criar planos (níveis 1 e 2)
+  const handleVincularComportamento = async () => {
+    if (!vinculo.planoId || !vinculo.comportamentoId) {
+      Alert.alert('Erro', 'Selecione um plano e um comportamento');
+      return;
+    }
+
+    try {
+      const csrfToken = await AsyncStorage.getItem('csrfToken');
+
+      const res = await fetch('https://iscdeploy.pythonanywhere.com/api/v1/behaviors_aux/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Referer': 'https://iscdeploy.pythonanywhere.com/',
+          'X-CSRFToken': csrfToken,
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          plan_id: Number(vinculo.planoId),
+          behavior_id: Number(vinculo.comportamentoId)
+        })
+      });
+
+      const raw = await res.text();
+
+      if (!res.ok) {
+        console.error('Erro ao vincular comportamento (raw):', raw);
+        Alert.alert('Erro ao vincular comportamento', raw);
+        return;
+      }
+
+      Alert.alert('Sucesso', 'Comportamento vinculado com sucesso!');
+      handleVoltar();
+    } catch (err) {
+      console.error('Erro na requisição:', err);
+      Alert.alert('Erro na requisição', err.message);
+    }
+  };
+
   const canCreatePlans = userLevel === 1 || userLevel === 2;
 
   return (
-    <MainLayout 
-      title="Planos" 
-      navigation={navigation}
-      showBackButton={false}
-    >
+    <MainLayout title="Planos" navigation={navigation} showBackButton={false}>
       <View style={styles.content}>
         {selectedAction === 'Cadastrar' ? (
           <ScrollView>
-            <TextInput
-              placeholder="Nome do Plano"
-              style={styles.input}
-              value={form.nome}
-              onChangeText={(text) => setForm({ ...form, nome: text })}
-            />
+            <TextInput placeholder="Nome do Plano" style={styles.input} value={form.nome} onChangeText={(text) => setForm({ ...form, nome: text })} />
             <View style={styles.dropdownWrapper}>
-              <Picker
-                selectedValue={form.tipo}
-                onValueChange={(value) => setForm({ ...form, tipo: value })}
-              >
+              <Picker selectedValue={form.tipo} onValueChange={(value) => setForm({ ...form, tipo: value })}>
                 <Picker.Item label="Tipo do Plano" value="" />
                 <Picker.Item label="Intervenção" value="Intervenção" />
                 <Picker.Item label="Avaliação" value="Avaliação" />
               </Picker>
             </View>
             <View style={styles.dropdownWrapper}>
-              <Picker
-                selectedValue={form.profissional}
-                onValueChange={(value) => setForm({ ...form, profissional: value })}
-              >
-                <Picker.Item label="Selecione o Profissional" value="" />
-                {mockProfissionais.map((prof) => (
-                  <Picker.Item key={prof.id} label={prof.nome} value={prof.nome} />
+              <Picker selectedValue={form.paciente} onValueChange={(value) => setForm({ ...form, paciente: value })}>
+                <Picker.Item label="Selecione o Paciente" value="" />
+                {pacientes.map((paciente) => (
+                  <Picker.Item key={paciente.id} label={paciente.patient_name} value={paciente.id} />
                 ))}
               </Picker>
             </View>
-
             <TouchableOpacity style={styles.submitButton} onPress={handleCadastroPlano}>
+              <Text style={styles.submitButtonText}>Cadastrar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelButton} onPress={handleVoltar}>
+              <Text style={styles.cancelButtonText}>Voltar</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        ) : selectedAction === 'Selecionar Avaliação' ? (
+          <ScrollView>
+            <Text style={styles.title}>Vincular Comportamento a Plano</Text>
+            <View style={styles.dropdownWrapper}>
+              <Picker selectedValue={vinculo.planoId} onValueChange={(value) => setVinculo({ ...vinculo, planoId: value })}>
+                <Picker.Item label="Selecione o Plano" value="" />
+                {planos.map((plano) => (
+                  <Picker.Item key={plano.id} label={plano.plan_name} value={plano.id} />
+                ))}
+              </Picker>
+            </View>
+            <View style={styles.dropdownWrapper}>
+              <Picker selectedValue={vinculo.comportamentoId} onValueChange={(value) => setVinculo({ ...vinculo, comportamentoId: value })}>
+                <Picker.Item label="Selecione o Comportamento" value="" />
+                {comportamentos.map((item) => (
+                  <Picker.Item key={item.id} label={item.behavior_name} value={item.id} />
+                ))}
+              </Picker>
+            </View>
+            <TouchableOpacity style={styles.submitButton} onPress={handleVincularComportamento}>
               <Text style={styles.submitButtonText}>Cadastrar</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.cancelButton} onPress={handleVoltar}>
@@ -93,54 +230,27 @@ const PlanosScreen = ({ navigation }) => {
           </ScrollView>
         ) : selectedAction?.startsWith('Selecionar') ? (
           <ScrollView>
-            <View style={styles.dropdownWrapper}>
-              <Picker
-                selectedValue={selectedPlano}
-                onValueChange={(value) => setSelectedPlano(value)}
-              >
-                <Picker.Item label="Selecione um Plano" value="" />
-                {mockPlanos.map((plano, index) => (
-                  <Picker.Item key={index} label={plano} value={plano} />
-                ))}
-              </Picker>
-            </View>
+            <Text style={styles.title}>Planos Cadastrados</Text>
+            {planos.map((plano) => (
+              <View key={plano.id} style={styles.planRow}>
+                <Text style={styles.planId}>{plano.id}</Text>
+                <Text style={styles.planName}>{plano.plan_name}</Text>
+                <Text style={styles.planType}>{plano.plan_type}</Text>
+              </View>
+            ))}
             <TouchableOpacity style={styles.cancelButton} onPress={handleVoltar}>
               <Text style={styles.cancelButtonText}>Voltar</Text>
             </TouchableOpacity>
           </ScrollView>
         ) : (
-          <>
-            <View style={styles.grid}>
-              {/* Mostra o card de criar apenas para níveis 1 e 2 */}
-              {canCreatePlans && (
-                <SquareCard
-                  iconName="add-outline"
-                  description="Criar Plano"
-                  onPress={() => setSelectedAction('Cadastrar')}
-                />
-              )}
-              <SquareCard
-                iconName="document-outline"
-                description="Plano Existente"
-                onPress={() => setSelectedAction('Selecionar Existente')}
-              />
-              <SquareCard
-                iconName="medkit-outline"
-                description="Plano de Intervenção"
-                onPress={() => setSelectedAction('Selecionar Intervenção')}
-              />
-              <SquareCard
-                iconName="clipboard-outline"
-                description="Plano de Avaliação"
-                onPress={() => setSelectedAction('Selecionar Avaliação')}
-              />
-              <SquareCard
-                iconName="arrow-back-outline"
-                description="Voltar"
-                onPress={() => navigation.goBack()}
-              />
-            </View>
-          </>
+          <View style={styles.grid}>
+            {canCreatePlans && (
+              <SquareCard iconName="add-outline" description="Criar Plano" onPress={() => setSelectedAction('Cadastrar')} />
+            )}
+            <SquareCard iconName="document-outline" description="Plano Existente" onPress={() => setSelectedAction('Selecionar Existente')} />
+            <SquareCard iconName="clipboard-outline" description="Adicionar Comportamento" onPress={() => setSelectedAction('Selecionar Avaliação')} />
+            <SquareCard iconName="arrow-back-outline" description="Voltar" onPress={() => navigation.goBack()} />
+          </View>
         )}
       </View>
     </MainLayout>
@@ -148,10 +258,7 @@ const PlanosScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  content: {
-    flex: 1,
-    padding: 15,
-  },
+  content: { flex: 1, padding: 15 },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -200,11 +307,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  centerCardWrapper: {
-    width: '100%',
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 20,
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginVertical: 10,
+    textAlign: 'center',
+  },
+  planRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: '#f1f1f1',
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  planId: {
+    width: '10%',
+    fontWeight: 'bold',
+    color: '#2f6b5e',
+  },
+  planName: {
+    width: '60%',
+    textAlign: 'center',
+  },
+  planType: {
+    width: '30%',
+    textAlign: 'right',
+    fontStyle: 'italic',
+    color: '#666',
   },
 });
 

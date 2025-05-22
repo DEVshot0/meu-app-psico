@@ -7,14 +7,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const mockPacientes = ['Paciente 1', 'Paciente 2', 'Paciente 3'];
 const mockAtividades = ['Atividade A', 'Atividade B', 'Atividade C'];
-const mockProfissionais = ['Dra. Ana Clara', 'Dr. Marcos Silva', 'Dra. Fernanda Rocha'];
 
 const AtividadesScreen = ({ navigation }) => {
   const [selectedAction, setSelectedAction] = useState(null);
   const [selectedPaciente, setSelectedPaciente] = useState('');
   const [selectedAtividade, setSelectedAtividade] = useState('');
-  const [form, setForm] = useState({ nome: '', tipo: '', profissional: '' });
+  const [form, setForm] = useState({ activity_name: '', tries: '', rewards: '', behavior_aux_id: '' });
   const [userLevel, setUserLevel] = useState(null);
+  const [behaviorOptions, setBehaviorOptions] = useState([]);
 
   useEffect(() => {
     const fetchUserLevel = async () => {
@@ -22,20 +22,96 @@ const AtividadesScreen = ({ navigation }) => {
       setUserLevel(Number(level));
     };
     fetchUserLevel();
+
+    const fetchBehaviors = async () => {
+      try {
+        const [auxRes, plansRes, behaviorsRes] = await Promise.all([
+          fetch('https://iscdeploy.pythonanywhere.com/api/v1/behaviors_aux/'),
+          fetch('https://iscdeploy.pythonanywhere.com/api/v1/plans/full/'),
+          fetch('https://iscdeploy.pythonanywhere.com/api/v1/behaviors/')
+        ]);
+
+        const auxData = await auxRes.json();
+        const plans = await plansRes.json();
+        const behaviors = await behaviorsRes.json();
+
+        console.log('Dados recebidos:');
+        console.log('auxData:', auxData);
+        console.log('plans:', plans);
+        console.log('behaviors:', behaviors);
+
+
+
+        const options = auxData.map((item) => {
+          const plan = plans.find((p) => String(p.id) === String(item.plan_id));
+          const behavior = plan?.behaviors?.find((b) => String(b.id) === String(item.behavior_id));
+
+          console.log(`Item ID ${item.id} - behavior_id: ${item.behavior_id}, encontrado:`, behavior);
+          console.log(`Item ID ${item.id} - plan_id: ${item.plan_id}, encontrado:`, plan);
+
+          return {
+            id: item.id,
+            label: `${item.id} -  ${behavior?.behavior_name || 'Desconhecido'} | ${plan?.plan_name || 'Desconhecido'}`,
+          };
+        });
+
+        setBehaviorOptions(options);
+      } catch (error) {
+        console.error('Erro ao buscar dados:', error);
+        alert(`Erro: ${error.message}`);
+      }
+    };
+
+    fetchBehaviors();
   }, []);
 
   const handleVoltar = () => {
     setSelectedAction(null);
     setSelectedPaciente('');
     setSelectedAtividade('');
-    setForm({ nome: '', tipo: '', profissional: '' });
+    setForm({ activity_name: '', tries: '', rewards: '', behavior_aux_id: '' });
   };
 
-  const handleCadastrarAtividade = () => {
-    console.log('Nova atividade:', form);
-    alert('Atividade cadastrada com sucesso!');
-    handleVoltar();
+  const handleCadastrarAtividade = async () => {
+    try {
+      const csrfToken = await AsyncStorage.getItem('csrfToken');
+      if (!csrfToken) {
+        alert('Token CSRF não encontrado. Faça login novamente.');
+        return;
+      }
+  
+      const response = await fetch('https://iscdeploy.pythonanywhere.com/api/v1/activities/', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+          'Referer': 'https://iscdeploy.pythonanywhere.com/',
+        },
+        body: JSON.stringify({
+          activity_name: form.activity_name,
+          tries: parseInt(form.tries),
+          rewards: parseInt(form.rewards),
+          behavior_aux_id: parseInt(form.behavior_aux_id),
+        }),
+      });
+  
+      const data = await response.json();
+  
+      if (response.ok) {
+        console.log('Atividade enviada:', data);
+        alert('Atividade cadastrada com sucesso!');
+        handleVoltar();
+      } else {
+        console.error('Erro ao cadastrar atividade:', data);
+        alert(`Erro: ${data?.detail || 'Erro desconhecido'}`);
+      }
+    } catch (error) {
+      console.error('Erro ao enviar atividade:', error);
+      alert('Erro ao enviar atividade');
+    }
   };
+  
 
   const handleAplicarAtividade = () => {
     console.log('Atividade aplicada:', {
@@ -66,15 +142,10 @@ const AtividadesScreen = ({ navigation }) => {
     </ScrollView>
   );
 
-  // Verifica se o usuário pode cadastrar atividades (níveis 1 e 2)
   const canCreateActivities = userLevel === 1 || userLevel === 2;
 
   return (
-    <MainLayout 
-      title="Atividades" 
-      navigation={navigation}
-      showBackButton={false}
-    >
+    <MainLayout title="Atividades" navigation={navigation} showBackButton={false}>
       <View style={styles.content}>
         {selectedAction === 'Aplicar' ? (
           <ScrollView>
@@ -116,31 +187,35 @@ const AtividadesScreen = ({ navigation }) => {
             <TextInput
               placeholder="Nome da Atividade"
               style={styles.input}
-              value={form.nome}
-              onChangeText={(text) => setForm({ ...form, nome: text })}
+              value={form.activity_name}
+              onChangeText={(text) => setForm({ ...form, activity_name: text })}
+            />
+            <TextInput
+              placeholder="Número de Tentativas"
+              style={styles.input}
+              keyboardType="numeric"
+              value={form.tries}
+              onChangeText={(text) => setForm({ ...form, tries: text })}
+            />
+            <TextInput
+              placeholder="Número de Recompensas"
+              style={styles.input}
+              keyboardType="numeric"
+              value={form.rewards}
+              onChangeText={(text) => setForm({ ...form, rewards: text })}
             />
             <View style={styles.dropdownWrapper}>
               <Picker
-                selectedValue={form.tipo}
-                onValueChange={(value) => setForm({ ...form, tipo: value })}
+                selectedValue={form.behavior_aux_id}
+                onValueChange={(value) => setForm({ ...form, behavior_aux_id: value })}
               >
-                <Picker.Item label="Tipo da Atividade" value="" />
-                <Picker.Item label="Intervenção" value="Intervenção" />
-                <Picker.Item label="Avaliação" value="Avaliação" />
-              </Picker>
-            </View>
-            <View style={styles.dropdownWrapper}>
-              <Picker
-                selectedValue={form.profissional}
-                onValueChange={(value) => setForm({ ...form, profissional: value })}
-              >
-                <Picker.Item label="Selecione o Profissional" value="" />
-                {mockProfissionais.map((prof, idx) => (
-                  <Picker.Item key={idx} label={prof} value={prof} />
+                <Picker.Item label="Selecione o Comportamento Auxiliar" value="" />
+                {behaviorOptions.map((item) => (
+                  <Picker.Item key={item.id} label={item.label} value={item.id} />
                 ))}
               </Picker>
             </View>
-            
+
             <TouchableOpacity style={styles.submitButton} onPress={handleCadastrarAtividade}>
               <Text style={styles.submitButtonText}>Cadastrar</Text>
             </TouchableOpacity>
@@ -153,7 +228,6 @@ const AtividadesScreen = ({ navigation }) => {
         ) : (
           <>
             <View style={styles.grid}>
-              {/* Mostra o card de cadastrar apenas para níveis 1 e 2 */}
               {canCreateActivities && (
                 <SquareCard
                   iconName="add-outline"
