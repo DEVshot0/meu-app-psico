@@ -1,23 +1,18 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Dimensions } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Dimensions, ActivityIndicator } from 'react-native';
 import MainLayout from '../components/MainLayout';
 import SquareCard from '../components/SquareCard';
 import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { mask as masker, unMask } from 'react-native-mask-text';
-
-const mockProfissionais = [
-  { id: 1, nome: 'Dra. Ana Clara', especializacao: 'Psiquiatria' },
-  { id: 2, nome: 'Dr. Marcos Silva', especializacao: 'Psicologia Clínica' },
-  { id: 3, nome: 'Dra. Fernanda Rocha', especializacao: 'Neurologia' },
-  { id: 4, nome: 'Dr. Lucas Almeida', especializacao: 'Terapia Cognitivo-Comportamental' },
-];
 
 const ProfissionalScreen = ({ navigation }) => {
   const [showForm, setShowForm] = useState(false);
-  const [viewing, setViewing] = useState(false);
-  const [managing, setManaging] = useState(false);
+  const [tipoCadastro, setTipoCadastro] = useState('Profissional');
+  const [isLoading, setIsLoading] = useState(false);
+
   const [formData, setFormData] = useState({
-    role: 'professional',
     full_name: '',
     birth_date: '',
     gender: '',
@@ -27,96 +22,102 @@ const ProfissionalScreen = ({ navigation }) => {
     cpf: '',
     rg: '',
     academic_background: '',
-    especialization: '',
-    curriculum: '',
+    specialization: '',
     position: '',
     department: '',
     admission_date: '',
-    work_scale: '',
+    work_schedule: '',
     observations: '',
-    user_id: ''
+    user_email: '',
+    user_username: '',
+    user_password: 'senha123'
   });
 
   const handleCardPress = (action) => {
-    switch (action) {
-      case 'Cadastrar':
-        setShowForm(true);
-        setViewing(false);
-        setManaging(false);
-        break;
-      case 'Ver':
-        setViewing(true);
-        setShowForm(false);
-        setManaging(false);
-        break;
-      case 'Gerenciar':
-        setManaging(true);
-        setShowForm(false);
-        setViewing(false);
-        break;
-      default:
-        setShowForm(false);
-        setViewing(false);
-        setManaging(false);
+    if (action === 'Cadastrar') {
+      setShowForm(true);
+    } else if (action === 'Voltar') {
+      navigation.goBack();
     }
   };
 
   const handleSubmit = async () => {
-    // Validação dos campos obrigatórios
-    const requiredFields = ['full_name', 'birth_date', 'phone_number', 'cpf', 'especialization', 'user_id'];
+    const requiredFields = ['full_name', 'birth_date', 'phone_number', 'cpf', 'user_email', 'user_username'];
+    if (tipoCadastro === 'Profissional') {
+      requiredFields.push('specialization');
+    }
+
     const missingFields = requiredFields.filter(field => !formData[field]);
-    
     if (missingFields.length > 0) {
       Alert.alert('Atenção', 'Por favor, preencha todos os campos obrigatórios (*)');
       return;
     }
 
-    // Validação do user_id (deve ser número)
-    if (isNaN(formData.user_id)) {
-      Alert.alert('Atenção', 'O ID do usuário deve ser um número');
-      return;
+    const csrfToken = await AsyncStorage.getItem('csrfToken');
+    if (!csrfToken) {
+      throw new Error('Token CSRF não encontrado. Faça login novamente.');
     }
-
-    // Validação da data (formato DD/MM/AAAA)
-    const dateRegex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
-    if (!dateRegex.test(formData.birth_date)) {
-      Alert.alert('Atenção', 'Data de nascimento inválida. Use o formato DD/MM/AAAA');
-      return;
-    }
+    setIsLoading(true);
 
     try {
-      // Preparando os dados para envio
-      const dataToSend = {
-        ...formData,
-        birth_date: formatDateForAPI(formData.birth_date),
-        phone_number: unMask(formData.phone_number),
-        cpf: unMask(formData.cpf),
-        admission_date: formData.admission_date ? formatDateForAPI(formData.admission_date) : '',
-        user_id: parseInt(formData.user_id) // Garante que é número
+      const user = {
+        email: formData.user_email,
+        username: formData.user_username,
+        password: formData.user_password,
+        level: tipoCadastro === 'Profissional' ? 2 : 3
       };
 
-      console.log("Dados que seriam enviados:", dataToSend);
-      
-      // Exemplo de requisição (comentada)
-      /*
-      const response = await fetch('https://api.seuendpoint.com/profissionais', {
+      const commonData = {
+        full_name: formData.full_name,
+        birth_date: formData.birth_date,
+        gender: formData.gender,
+        nationality: formData.nationality,
+        address: formData.address,
+        phone_number: unMask(formData.phone_number),
+        cpf: formData.cpf,
+        rg: formData.rg,
+        academic_background: formData.academic_background,
+        position: formData.position,
+        department: formData.department,
+        admission_date: formData.admission_date,
+        work_schedule: formData.work_schedule,
+        observations: formData.observations
+      };
+
+      const payload = { user };
+
+      if (tipoCadastro === 'Profissional') {
+        payload.professional = { 
+          ...commonData, 
+          specialization: formData.specialization
+        };
+      } else {
+        payload.aplicator = { ...commonData };
+      }
+
+      const endpoint = tipoCadastro === 'Profissional' 
+        ? 'https://iscdeploy.pythonanywhere.com/api/v1/register/professional/' 
+        : 'https://iscdeploy.pythonanywhere.com/api/v1/register/aplicator/';
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Referer': 'https://iscdeploy.pythonanywhere.com/',
+          'X-CSRFToken': csrfToken,
         },
-        body: JSON.stringify(dataToSend),
+        body: JSON.stringify(payload),
       });
-      
-      if (!response.ok) throw new Error('Erro ao cadastrar profissional');
-      
-      const data = await response.json();
-      */
-      
-      Alert.alert('Sucesso', 'Profissional cadastrado com sucesso!');
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(responseData.message || 'Erro ao cadastrar');
+      }
+
+      Alert.alert('Sucesso', `${tipoCadastro} cadastrado com sucesso!`);
       setShowForm(false);
-      // Limpar formulário
       setFormData({
-        role: 'professional',
         full_name: '',
         birth_date: '',
         gender: '',
@@ -126,59 +127,84 @@ const ProfissionalScreen = ({ navigation }) => {
         cpf: '',
         rg: '',
         academic_background: '',
-        especialization: '',
-        curriculum: '',
+        specialization: '',
         position: '',
         department: '',
         admission_date: '',
-        work_scale: '',
+        work_schedule: '',
         observations: '',
-        user_id: ''
+        user_email: '',
+        user_username: '',
+        user_password: 'senha123'
       });
     } catch (error) {
-      console.error('Erro ao cadastrar profissional:', error);
-      Alert.alert('Erro', 'Ocorreu um erro ao cadastrar o profissional');
+      console.error('Erro ao cadastrar:', error);
+      Alert.alert('Erro', error.message || 'Ocorreu um erro ao cadastrar');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Função para formatar data para o padrão API (AAAA-MM-DD)
-  const formatDateForAPI = (date) => {
-    const [day, month, year] = date.split('/');
-    return `${year}-${month}-${day}`;
-  };
-
-  // Função para aplicar máscaras
   const handleInputChange = (field, value, mask = null) => {
     let newValue = value;
-    
+
     if (mask) {
-      newValue = masker(newValue, mask, { 
-        maskAutomatically: field === 'birth_date' || field === 'admission_date' 
+      newValue = masker(newValue, mask, {
+        maskAutomatically: field === 'birth_date' || field === 'admission_date'
       });
     }
-    
+
     setFormData({
       ...formData,
       [field]: newValue
     });
   };
 
+  if (isLoading) {
+    return (
+      <MainLayout title="Profissional" navigation={navigation} showBackButton={false}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2f6b5e" />
+          <Text style={styles.loadingText}>Enviando dados...</Text>
+        </View>
+      </MainLayout>
+    );
+  }
+
   return (
-    <MainLayout 
-      title="Profissional" 
-      navigation={navigation}
-      showBackButton={false}
-    >
+    <MainLayout title="Profissional" navigation={navigation} showBackButton={false}>
       <View style={styles.content}>
         {showForm ? (
           <ScrollView style={styles.formContainer}>
+            <Text style={{ fontSize: 16, marginBottom: 5, fontWeight: 'bold' }}>Tipo de Cadastro:</Text>
+            <View style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 10, marginBottom: 15 }}>
+              <Picker
+                selectedValue={tipoCadastro}
+                onValueChange={(value) => setTipoCadastro(value)}
+              >
+                <Picker.Item label="Profissional" value="Profissional" />
+                <Picker.Item label="Aplicador" value="Aplicador" />
+              </Picker>
+            </View>
+
+            <Text style={styles.sectionTitle}>Dados de Acesso</Text>
             <TextInput
               style={styles.input}
-              placeholder="ID do Usuário* (Número)"
-              value={formData.user_id}
-              onChangeText={(text) => handleInputChange('user_id', text)}
-              keyboardType="numeric"
+              placeholder="Email do usuário*"
+              value={formData.user_email}
+              onChangeText={(text) => handleInputChange('user_email', text)}
+              keyboardType="email-address"
+              autoCapitalize="none"
             />
+            <TextInput
+              style={styles.input}
+              placeholder="Username*"
+              value={formData.user_username}
+              onChangeText={(text) => handleInputChange('user_username', text)}
+              autoCapitalize="none"
+            />
+
+            <Text style={styles.sectionTitle}>Dados Pessoais</Text>
             <TextInput
               style={styles.input}
               placeholder="Nome completo*"
@@ -187,9 +213,9 @@ const ProfissionalScreen = ({ navigation }) => {
             />
             <TextInput
               style={styles.input}
-              placeholder="Data de Nascimento (DD/MM/AAAA)*"
+              placeholder="Data de Nascimento (AAAA-MM-DD)*"
               value={formData.birth_date}
-              onChangeText={(text) => handleInputChange('birth_date', text, '99/99/9999')}
+              onChangeText={(text) => handleInputChange('birth_date', text, '9999-99-99')}
               keyboardType="numeric"
               maxLength={10}
             />
@@ -240,12 +266,16 @@ const ProfissionalScreen = ({ navigation }) => {
               value={formData.academic_background}
               onChangeText={(text) => handleInputChange('academic_background', text)}
             />
-            <TextInput
-              style={styles.input}
-              placeholder="Especialização*"
-              value={formData.especialization}
-              onChangeText={(text) => handleInputChange('especialization', text)}
-            />
+            {tipoCadastro === 'Profissional' && (
+              <TextInput
+                style={styles.input}
+                placeholder="Especialização*"
+                value={formData.specialization}
+                onChangeText={(text) => handleInputChange('specialization', text)}
+              />
+            )}
+
+            <Text style={styles.sectionTitle}>Dados Profissionais</Text>
             <TextInput
               style={styles.input}
               placeholder="Cargo"
@@ -260,17 +290,17 @@ const ProfissionalScreen = ({ navigation }) => {
             />
             <TextInput
               style={styles.input}
-              placeholder="Data de Admissão (DD/MM/AAAA)"
+              placeholder="Data de Admissão (AAAA-MM-DD)"
               value={formData.admission_date}
-              onChangeText={(text) => handleInputChange('admission_date', text, '99/99/9999')}
+              onChangeText={(text) => handleInputChange('admission_date', text, '9999-99-99')}
               keyboardType="numeric"
               maxLength={10}
             />
             <TextInput
               style={styles.input}
               placeholder="Escala de Trabalho"
-              value={formData.work_scale}
-              onChangeText={(text) => handleInputChange('work_scale', text)}
+              value={formData.work_schedule}
+              onChangeText={(text) => handleInputChange('work_schedule', text)}
             />
             <TextInput
               style={[styles.input, { height: 100 }]}
@@ -279,73 +309,35 @@ const ProfissionalScreen = ({ navigation }) => {
               onChangeText={(text) => handleInputChange('observations', text)}
               multiline
             />
-            
-            <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-              <Text style={styles.submitButtonText}>Cadastrar</Text>
+
+            <TouchableOpacity 
+              style={styles.submitButton} 
+              onPress={handleSubmit}
+              disabled={isLoading}
+            >
+              <Text style={styles.submitButtonText}>
+                {isLoading ? 'Enviando...' : 'Cadastrar'}
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelButton} onPress={() => setShowForm(false)}>
+            <TouchableOpacity 
+              style={styles.cancelButton} 
+              onPress={() => setShowForm(false)}
+              disabled={isLoading}
+            >
               <Text style={styles.cancelButtonText}>Cancelar</Text>
             </TouchableOpacity>
           </ScrollView>
-        ) : viewing ? (
-          <View style={{ flex: 1 }}>
-            <ScrollView>
-              {mockProfissionais.map((prof) => (
-                <View key={prof.id} style={styles.card}>
-                  <Text style={styles.cardText}>Nome: {prof.nome}</Text>
-                  <Text style={styles.cardText}>Especialização: {prof.especializacao}</Text>
-                </View>
-              ))}
-            </ScrollView>
-            <TouchableOpacity style={styles.cancelButton} onPress={() => setViewing(false)}>
-              <Text style={styles.cancelButtonText}>Voltar</Text>
-            </TouchableOpacity>
-          </View>
-        ) : managing ? (
-          <View style={{ flex: 1 }}>
-            <ScrollView>
-              {mockProfissionais.map((prof) => (
-                <View key={prof.id} style={styles.manageCard}>
-                  <View style={styles.manageTextContainer}>
-                    <Text style={styles.cardText}>Nome: {prof.nome}</Text>
-                    <Text style={styles.cardText}>Especialização: {prof.especializacao}</Text>
-                  </View>
-                  <View style={styles.icons}>
-                    <TouchableOpacity onPress={() => Alert.alert('Editar', 'Editar profissional')}>
-                      <Ionicons name="pencil-outline" size={24} color="#2980b9" />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => Alert.alert('Excluir', 'Excluir profissional')}>
-                      <Ionicons name="close-circle-outline" size={24} color="#c0392b" style={{ marginLeft: 10 }} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
-            </ScrollView>
-            <TouchableOpacity style={styles.cancelButton} onPress={() => setManaging(false)}>
-              <Text style={styles.cancelButtonText}>Voltar</Text>
-            </TouchableOpacity>
-          </View>
         ) : (
           <View style={styles.gridContainer}>
-            <SquareCard 
-              iconName="person-add-outline" 
+            <SquareCard
+              iconName="person-add-outline"
               description="Cadastrar"
               onPress={() => handleCardPress('Cadastrar')}
             />
-            <SquareCard 
-              iconName="people-outline" 
-              description="Ver Profissionais"
-              onPress={() => handleCardPress('Ver')}
-            />
-            <SquareCard 
-              iconName="settings-outline" 
-              description="Gerenciar"
-              onPress={() => handleCardPress('Gerenciar')}
-            />
-            <SquareCard 
-              iconName="arrow-back-outline" 
+            <SquareCard
+              iconName="arrow-back-outline"
               description="Voltar"
-              onPress={() => navigation.goBack()}
+              onPress={() => handleCardPress('Voltar')}
             />
           </View>
         )}
@@ -359,15 +351,16 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 15,
   },
-  gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    paddingHorizontal: Dimensions.get('window').width * 0.05,
-  },
   formContainer: {
     flex: 1,
     padding: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 20,
+    marginBottom: 10,
+    color: '#2f6b5e',
   },
   input: {
     height: 50,
@@ -383,7 +376,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 20,
   },
   submitButtonText: {
     color: 'white',
@@ -396,38 +389,28 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     marginTop: 10,
+    marginBottom: 20,
   },
   cancelButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
   },
-  card: {
-    backgroundColor: '#ecf0f1',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  manageCard: {
-    backgroundColor: '#ecf0f1',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
+  gridContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    paddingHorizontal: Dimensions.get('window').width * 0.05,
   },
-  manageTextContainer: {
+  loadingContainer: {
     flex: 1,
-    paddingRight: 10,
-  },
-  cardText: {
-    fontSize: 16,
-    marginBottom: 5,
-  },
-  icons: {
-    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#2f6b5e',
   },
 });
 

@@ -16,16 +16,13 @@ const HomeScreen = ({ navigation }) => {
   }, []);
 
   const allCards = [
-    { label: 'Atividades', icon: 'list-outline', route: 'Atividades' },
     { label: 'Paciente', icon: 'people-outline', route: 'Paciente' },
     { label: 'Profissional', icon: 'person-outline', route: 'Profissional' },
     { label: 'Planos', icon: 'document-outline', route: 'Planos' },
     { label: 'Relatórios', icon: 'bar-chart-outline', route: 'Relatorios' },
-    { label: 'Histórico', icon: 'time-outline', route: 'Historico' },
     { label: 'Configurações', icon: 'settings-outline', route: 'Configuracoes' },
   ];
 
-  // Filtra os cards de acordo com o nível do usuário
   const getVisibleCards = () => {
     switch(userLevel) {
       case 1: // Nível 1 - Todos os cards
@@ -36,11 +33,11 @@ const HomeScreen = ({ navigation }) => {
         return allCards.filter(card => 
           !['Paciente', 'Profissional'].includes(card.label)
         );
-      case 4: // Nível 4 - Apenas Planos, Histórico e Configurações
+      case 4: // Nível 4 - Apenas Planos e Configurações
         return allCards.filter(card =>
-          ['Planos', 'Histórico', 'Configurações'].includes(card.label)
+          ['Planos', 'Configurações'].includes(card.label)
         );
-      default: // Caso padrão (se não tiver nível definido)
+      default:
         return [];
     }
   };
@@ -54,7 +51,7 @@ const HomeScreen = ({ navigation }) => {
         text: 'Sair',
         style: 'destructive',
         onPress: async () => {
-          await AsyncStorage.clear(); // Limpa todos os dados salvos
+          await AsyncStorage.clear();
           navigation.reset({
             index: 0,
             routes: [{ name: 'Login' }],

@@ -11,6 +11,14 @@ import PacienteScreen from '../screens/PacienteScreen';
 import PlanosScreen from '../screens/PlanosScreen';
 import ProfissionalScreen from '../screens/ProfissionalScreen';
 import RelatoriosScreen from '../screens/RelatoriosScreen';
+import AplicarPlanoScreen from '../screens/AplicarPlanoScreen'
+import PlanoAvaliacaoScreen from '../screens/PlanoAvaliacaoScreen';
+import ExecucaoPlanoScreen from '../screens/ExecucaoPlanoScreen';
+import PlanoAvaliacaoAtividadesScreen from '../screens/PlanoAvaliacaoAtividadesScreen';
+import AtividadeExecucaoScreen from '../screens/AtividadeExecucaoScreen';
+import PlanoIntervencaoScreen from '../screens/PlanoIntervencaoScreen';
+import PlanoIntervencaoAtividadesScreen from '../screens/PlanoIntervencaoAtividadesScreen';
+import FinalizacaoScreen from '../screens/FinalizacaoScreen';
 
 
 const Stack = createStackNavigator();
@@ -41,6 +49,14 @@ const AppNavigator = () => {
         <Stack.Screen name="Planos" component={PlanosScreen} />
         <Stack.Screen name="Profissional" component={ProfissionalScreen} />
         <Stack.Screen name="Relatorios" component={RelatoriosScreen} />
+        <Stack.Screen name="Aplicar" component={AplicarPlanoScreen} />
+        <Stack.Screen name="PlanoAvaliacao" component={PlanoAvaliacaoScreen} />
+        <Stack.Screen name="PlanoIntervencao" component={PlanoIntervencaoScreen} />
+        <Stack.Screen name="ExecucaoPlano" component={ExecucaoPlanoScreen} />
+        <Stack.Screen name="PlanoAvaliacaoAtividades" component={PlanoAvaliacaoAtividadesScreen} />
+        <Stack.Screen name="PlanoIntervencaoAtividades" component={PlanoIntervencaoAtividadesScreen} />
+        <Stack.Screen name="AtividadeExecucao" component={AtividadeExecucaoScreen} />
+        <Stack.Screen name="FinalizacaoScreen" component={FinalizacaoScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

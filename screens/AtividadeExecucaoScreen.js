@@ -1,4 +1,3 @@
-// AtividadeExecucaoScreen.jsx
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import MainLayout from '../components/MainLayout';
@@ -24,6 +23,26 @@ const AtividadeExecucaoScreen = ({ navigation, route }) => {
     return `${m}:${s}`;
   };
 
+  const finalizeAndGoBack = (finalResult) => {
+    try {
+      // Atualiza o tryData diretamente
+      tryData.result = finalResult.result;
+      tryData.time = finalResult.time;
+      tryData.reward = finalResult.reward;
+
+      console.log('✅ JSON PARCIAL ATUALIZADO (ATIVIDADE RESULTADO FINAL):', JSON.stringify({
+        ...jsonParcial,
+        behaviors: behaviorQueue
+      }, null, 2));
+    } catch (error) {
+      console.error('❌ ERRO AO ATUALIZAR TRYDATA:', error);
+    }
+
+    // Não é mais necessário chamar onActivityComplete (ExecucaoPlano já gerencia)
+    console.log('🔙 Voltando para ExecucaoPlanoScreen...');
+    navigation.goBack();
+  };
+
   const handleResult = (result) => {
     const executionTime = `${600 - timer}s`;
 
@@ -31,16 +50,13 @@ const AtividadeExecucaoScreen = ({ navigation, route }) => {
       setPendingResult({ result, executionTime });
       setShowPremioModal(true);
     } else {
-      tryData.result = result;
-      tryData.time = executionTime;
-      tryData.reward = null;
+      const finalResult = {
+        result,
+        time: executionTime,
+        reward: null
+      };
 
-      console.log('✅ JSON PARCIAL ATUALIZADO (ATIVIDADE RESULTADO):', JSON.stringify({
-        ...jsonParcial,
-        behaviors: behaviorQueue
-      }, null, 2));
-
-      navigation.goBack();
+      finalizeAndGoBack(finalResult);
     }
   };
 
@@ -48,31 +64,25 @@ const AtividadeExecucaoScreen = ({ navigation, route }) => {
     console.log(`Premio: ${houvePremio ? 'Sim' : 'Não'}`);
     setShowPremioModal(false);
 
-    tryData.result = pendingResult.result;
-    tryData.time = pendingResult.executionTime;
-    tryData.reward = houvePremio ? 'Sim' : 'Não';
+    const finalResult = {
+      result: pendingResult.result,
+      time: pendingResult.executionTime,
+      reward: houvePremio ? 'Sim' : 'Não'
+    };
 
-    console.log('✅ JSON PARCIAL ATUALIZADO (ATIVIDADE RESULTADO + PREMIO):', JSON.stringify({
-      ...jsonParcial,
-      behaviors: behaviorQueue
-    }, null, 2));
-
-    navigation.goBack();
+    finalizeAndGoBack(finalResult);
   };
 
   const handleSkipActivity = () => {
     console.log('Atividade pulada!');
 
-    tryData.result = 'pulado';
-    tryData.time = null;
-    tryData.reward = null;
+    const finalResult = {
+      result: 'pulado',
+      time: null,
+      reward: null
+    };
 
-    console.log('✅ JSON PARCIAL ATUALIZADO (ATIVIDADE PULADA):', JSON.stringify({
-      ...jsonParcial,
-      behaviors: behaviorQueue
-    }, null, 2));
-
-    navigation.goBack();
+    finalizeAndGoBack(finalResult);
   };
 
   return (
@@ -205,7 +215,7 @@ const styles = StyleSheet.create({
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   modalButton: {
     backgroundColor: '#2f6b5e',

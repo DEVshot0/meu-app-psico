@@ -133,45 +133,6 @@ const PlanosScreen = ({ navigation }) => {
     }
   };
 
-  const handleVincularComportamento = async () => {
-    if (!vinculo.planoId || !vinculo.comportamentoId) {
-      Alert.alert('Erro', 'Selecione um plano e um comportamento');
-      return;
-    }
-
-    try {
-      const csrfToken = await AsyncStorage.getItem('csrfToken');
-
-      const res = await fetch('https://iscdeploy.pythonanywhere.com/api/v1/behaviors_aux/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Referer': 'https://iscdeploy.pythonanywhere.com/',
-          'X-CSRFToken': csrfToken,
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          plan_id: Number(vinculo.planoId),
-          behavior_id: Number(vinculo.comportamentoId)
-        })
-      });
-
-      const raw = await res.text();
-
-      if (!res.ok) {
-        console.error('Erro ao vincular comportamento (raw):', raw);
-        Alert.alert('Erro ao vincular comportamento', raw);
-        return;
-      }
-
-      Alert.alert('Sucesso', 'Comportamento vinculado com sucesso!');
-      handleVoltar();
-    } catch (err) {
-      console.error('Erro na requisição:', err);
-      Alert.alert('Erro na requisição', err.message);
-    }
-  };
-
   const canCreatePlans = userLevel === 1 || userLevel === 2;
 
   return (
@@ -202,32 +163,6 @@ const PlanosScreen = ({ navigation }) => {
               <Text style={styles.cancelButtonText}>Voltar</Text>
             </TouchableOpacity>
           </ScrollView>
-        ) : selectedAction === 'Selecionar Avaliação' ? (
-          <ScrollView>
-            <Text style={styles.title}>Vincular Comportamento a Plano</Text>
-            <View style={styles.dropdownWrapper}>
-              <Picker selectedValue={vinculo.planoId} onValueChange={(value) => setVinculo({ ...vinculo, planoId: value })}>
-                <Picker.Item label="Selecione o Plano" value="" />
-                {planos.map((plano) => (
-                  <Picker.Item key={plano.id} label={plano.plan_name} value={plano.id} />
-                ))}
-              </Picker>
-            </View>
-            <View style={styles.dropdownWrapper}>
-              <Picker selectedValue={vinculo.comportamentoId} onValueChange={(value) => setVinculo({ ...vinculo, comportamentoId: value })}>
-                <Picker.Item label="Selecione o Comportamento" value="" />
-                {comportamentos.map((item) => (
-                  <Picker.Item key={item.id} label={item.behavior_name} value={item.id} />
-                ))}
-              </Picker>
-            </View>
-            <TouchableOpacity style={styles.submitButton} onPress={handleVincularComportamento}>
-              <Text style={styles.submitButtonText}>Cadastrar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelButton} onPress={handleVoltar}>
-              <Text style={styles.cancelButtonText}>Voltar</Text>
-            </TouchableOpacity>
-          </ScrollView>
         ) : selectedAction?.startsWith('Selecionar') ? (
           <ScrollView>
             <Text style={styles.title}>Planos Cadastrados</Text>
@@ -248,7 +183,7 @@ const PlanosScreen = ({ navigation }) => {
               <SquareCard iconName="add-outline" description="Criar Plano" onPress={() => setSelectedAction('Cadastrar')} />
             )}
             <SquareCard iconName="document-outline" description="Plano Existente" onPress={() => setSelectedAction('Selecionar Existente')} />
-            <SquareCard iconName="clipboard-outline" description="Adicionar Comportamento" onPress={() => setSelectedAction('Selecionar Avaliação')} />
+            <SquareCard iconName="checkmark-done-outline" description="Aplicar Plano" onPress={() => navigation.navigate('Aplicar')} />
             <SquareCard iconName="arrow-back-outline" description="Voltar" onPress={() => navigation.goBack()} />
           </View>
         )}

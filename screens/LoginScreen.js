@@ -9,15 +9,19 @@ import {
   TouchableWithoutFeedback,
   Platform,
   StatusBar,
-  KeyboardAvoidingView
+  KeyboardAvoidingView,
+  ActivityIndicator,
+  Image
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import ISClogo from '../assets/ISC.png';
 
 const LoginScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [csrfToken, setCsrfToken] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   // Função para obter e armazenar o token CSRF
   const fetchCsrfToken = async () => {
@@ -65,7 +69,9 @@ const LoginScreen = ({ navigation }) => {
       alert('Aguarde, estamos verificando a segurança...');
       return;
     }
-  
+
+    setIsLoading(true);
+
     try {
       const response = await fetch('https://iscdeploy.pythonanywhere.com/api/v1/login/', {
         method: 'POST',
@@ -79,37 +85,38 @@ const LoginScreen = ({ navigation }) => {
           password: password,
         }),
       });
-  
+
       const contentType = response.headers.get('content-type');
-  
+
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text();
         throw new Error(`Resposta inesperada da API:\n${text}`);
       }
-  
+
       const data = await response.json();
-  
+
       if (response.ok) {
         const userId = data["user id"];
-        // MODIFICAÇÃO AQUI - sempre salva level 4 para teste
-        const level = data.level; // Mock para teste, substitui data.level
-        
+        const level = data.level;
+
         await AsyncStorage.setItem('userId', String(userId));
         await AsyncStorage.setItem('userLevel', String(level));
-  
-        alert(`Login realizado com sucesso!\nID: ${userId}\nNível: ${level} (mockado para testes)`);
+
+        const newCsrf = await fetchCsrfToken();
+
+        alert(`Login realizado com sucesso!\nID: ${userId}\nNível: ${level}`);
         navigation.navigate('Home');
       } else {
         alert(`Erro ao fazer login: ${data?.detail || 'Verifique seus dados'}`);
       }
-  
+
     } catch (error) {
       alert(`Erro de conexão: ${error.message}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  
-  
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -119,19 +126,20 @@ const LoginScreen = ({ navigation }) => {
         <View style={styles.innerContainer}>
           <StatusBar backgroundColor="#2f6b5e" barStyle="light-content" />
           
-          <View style={styles.circle} />
+          <View style={styles.logoContainer}>
+            <Image source={ISClogo} style={styles.logo} resizeMode="contain" />
+          </View>
           
           <View style={styles.mainContent}>
-            <Text style={styles.title}>Aplicativo</Text>
-            <Text style={styles.subtitle}>ISC</Text>
             
             <View style={styles.inputContainer}>
               <Ionicons name="person-outline" size={20} color="#fff" style={styles.icon} />
               <TextInput 
-                placeholder="Usuário"
+                placeholder="Email"
                 placeholderTextColor="rgba(255,255,255,0.7)"
                 value={username}
                 onChangeText={setUsername}
+                keyboardType="email-address"
                 style={styles.input}
               />
             </View>
@@ -151,23 +159,28 @@ const LoginScreen = ({ navigation }) => {
           
           <View style={styles.whiteBox}>
             <Text style={styles.registerText}>
-              Ainda não é usuário?{' '}
+              Esqueceu sua senha?{' '}
               <Text 
                 style={styles.registerLink}
                 onPress={() => navigation.navigate('Register')}
               >
-                Cadastre-se!
+                Lembrar-me!
               </Text>
             </Text>
             
             <View style={styles.buttonWrapper}>
               <View style={styles.buttonShadow} />
               <TouchableOpacity 
-                style={styles.loginButton} 
+                style={[styles.loginButton, isLoading && { opacity: 0.6 }]} 
                 activeOpacity={0.8}
                 onPress={handleLogin}
+                disabled={isLoading}
               >
-                <Text style={styles.buttonText}>Login</Text>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>Login</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -186,15 +199,19 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
   },
-  circle: {
+  logoContainer: {
     position: 'absolute',
-    top: '15%',
+    top: '25%', 
     alignSelf: 'center',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: '#5c9486',
+    width: 250,
+    height: 250, 
+    justifyContent: 'center',
+    alignItems: 'center',
     zIndex: 0,
+  },
+  logo: {
+    width: '100%', 
+    height: '100%', 
   },
   mainContent: {
     padding: 20,
@@ -222,12 +239,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     color: '#fbb040',
-    marginBottom: 5,
-    fontWeight: 'bold',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: 'white',
     marginBottom: 30,
     fontWeight: 'bold',
   },

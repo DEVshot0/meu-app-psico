@@ -109,15 +109,6 @@ const MainLayout = ({ children, title, navigation, showBackButton = false }) => 
           
           <TouchableOpacity 
             style={styles.optionBox}
-            onPress={() => navigateTo('Atividades')}
-          >
-            <Ionicons name="fitness-outline" size={22} color="white" style={styles.optionIcon} />
-            <Text style={styles.optionItem}>Atividades</Text>
-            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.optionBox}
             onPress={() => navigateTo('Configuracoes')}
           >
             <Ionicons name="settings-outline" size={22} color="white" style={styles.optionIcon} />
