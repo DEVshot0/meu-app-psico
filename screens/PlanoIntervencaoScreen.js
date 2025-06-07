@@ -1,69 +1,74 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  TextInput
+} from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import MainLayout from '../components/MainLayout';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PlanoIntervencaoScreen = ({ navigation, route }) => {
   const { patientId, jsonParcial } = route.params;
 
-  const planos = [
-    {
-      id: 1,
-      plan_name: "Plano Intervencao 1",
-      plan_type: "intervencao",
-      behaviors: [
-        {
-          id: 1,
-          behavior_name: "Comportamento A",
-          activities: [
-            { id: 1, activity_name: "Atividade A1", tries: 10 },
-            { id: 2, activity_name: "Atividade A2", tries: 5 }
-          ]
-        },
-        {
-          id: 2,
-          behavior_name: "Comportamento B",
-          activities: [
-            { id: 3, activity_name: "Atividade B1", tries: 8 },
-            { id: 4, activity_name: "Atividade B2", tries: 6 }
-          ]
-        }
-      ]
-    },
-    {
-      id: 2,
-      plan_name: "Plano Intervencao 2",
-      plan_type: "intervencao",
-      behaviors: [
-        {
-          id: 1,
-          behavior_name: "Comportamento C",
-          activities: [
-            { id: 1, activity_name: "Atividade C1", tries: 7 },
-            { id: 2, activity_name: "Atividade C2", tries: 9 }
-          ]
-        },
-        {
-          id: 2,
-          behavior_name: "Comportamento D",
-          activities: [
-            { id: 3, activity_name: "Atividade D1", tries: 4 },
-            { id: 4, activity_name: "Atividade D2", tries: 10 }
-          ]
-        }
-      ]
-    }
-  ];
-
+  const [isLoading, setIsLoading] = useState(true);
+  const [planos, setPlanos] = useState([]);
   const [selectedPlanoId, setSelectedPlanoId] = useState('');
   const [availableBehaviors, setAvailableBehaviors] = useState([]);
   const [selectedBehaviorPickers, setSelectedBehaviorPickers] = useState([]);
+  const [newBehaviorName, setNewBehaviorName] = useState('');
+
+  useEffect(() => {
+    const fetchPlanos = async () => {
+      try {
+        const csrfToken = await AsyncStorage.getItem('csrfToken');
+        if (!csrfToken) {
+          throw new Error('Token CSRF não encontrado');
+        }
+
+        const response = await fetch('https://iscdeploy.pythonanywhere.com/api/v1/plans/full/', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Referer': 'https://iscdeploy.pythonanywhere.com/',
+            'X-CSRFToken': csrfToken,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Falha ao obter planos');
+        }
+
+        const data = await response.json();
+
+        // Filtrar planos de INTERVENÇÃO com robustez no plan_type
+        const planosIntervencao = data.filter(plano => {
+          const tipoNormalizado = plano.plan_type.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          return tipoNormalizado.includes('intervencao');
+        });
+
+        setPlanos(planosIntervencao);
+      } catch (error) {
+        console.error('Erro ao buscar planos:', error);
+        Alert.alert('Erro', 'Não foi possível carregar os planos de intervenção');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPlanos();
+  }, []);
 
   const handlePlanoChange = (value) => {
     setSelectedPlanoId(value);
     const planoSelecionado = planos.find((p) => p.id === value);
     if (planoSelecionado) {
-      setAvailableBehaviors(planoSelecionado.behaviors);
+      setAvailableBehaviors(planoSelecionado.behaviors || []);
       setSelectedBehaviorPickers([]);
     } else {
       setAvailableBehaviors([]);
@@ -90,9 +95,26 @@ const PlanoIntervencaoScreen = ({ navigation, route }) => {
     setSelectedBehaviorPickers(updatedPickers);
   };
 
+  const handleAddNewBehavior = () => {
+    if (newBehaviorName.trim() === '') {
+      Alert.alert('Atenção', 'Digite um nome para o comportamento');
+      return;
+    }
+
+    const newBehavior = {
+      id: `novo-${Date.now()}`, // id único temporário
+      behavior_name: newBehaviorName.trim(),
+      activities: [] // sem atividades ainda
+    };
+
+    setAvailableBehaviors((prev) => [...prev, newBehavior]);
+    setNewBehaviorName('');
+    Alert.alert('Sucesso', 'Comportamento adicionado com sucesso!');
+  };
+
   const handleNext = () => {
     if (!selectedPlanoId) {
-      alert('Por favor, selecione um plano primeiro!');
+      Alert.alert('Atenção', 'Por favor, selecione um plano primeiro!');
       return;
     }
 
@@ -100,7 +122,7 @@ const PlanoIntervencaoScreen = ({ navigation, route }) => {
 
     if (selectedBehaviorPickers.length === 0) {
       if (availableBehaviors.length === 0) {
-        alert('Este plano não possui comportamentos e você não adicionou nenhum.');
+        Alert.alert('Atenção', 'Este plano não possui comportamentos e você não adicionou nenhum.');
         return;
       } else {
         selectedBehaviors = availableBehaviors;
@@ -111,7 +133,7 @@ const PlanoIntervencaoScreen = ({ navigation, route }) => {
         .filter(Boolean);
 
       if (selectedBehaviors.length === 0) {
-        alert('Por favor, selecione comportamentos válidos!');
+        Alert.alert('Atenção', 'Por favor, selecione comportamentos válidos!');
         return;
       }
     }
@@ -123,10 +145,10 @@ const PlanoIntervencaoScreen = ({ navigation, route }) => {
       plan_name: planoSelecionado ? planoSelecionado.plan_name : '',
       behaviors: selectedBehaviors.map((b) => ({
         behavior_name: b.behavior_name,
-        activities: b.activities.map((a) => ({
+        activities: b.activities ? b.activities.map((a) => ({
           activity_name: a.activity_name,
           tries: []
-        }))
+        })) : []
       }))
     };
 
@@ -140,6 +162,17 @@ const PlanoIntervencaoScreen = ({ navigation, route }) => {
       jsonParcial: novoJsonParcial
     });
   };
+
+  if (isLoading) {
+    return (
+      <MainLayout title="Plano de Intervenção" navigation={navigation} showBackButton={true}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2f6b5e" />
+          <Text style={styles.loadingText}>Carregando planos...</Text>
+        </View>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout title="Plano de Intervenção" navigation={navigation} showBackButton={true}>
@@ -159,9 +192,13 @@ const PlanoIntervencaoScreen = ({ navigation, route }) => {
           <>
             <Text style={styles.label}>Comportamentos do plano:</Text>
             <View style={styles.behaviorList}>
-              {availableBehaviors.map((b) => (
-                <Text key={b.id} style={styles.behaviorListItem}>• {b.behavior_name}</Text>
-              ))}
+              {availableBehaviors.length > 0 ? (
+                availableBehaviors.map((b) => (
+                  <Text key={b.id} style={styles.behaviorListItem}>• {b.behavior_name}</Text>
+                ))
+              ) : (
+                <Text style={styles.behaviorListItem}>Nenhum comportamento disponível</Text>
+              )}
             </View>
 
             <Text style={styles.label}>Selecione os comportamentos:</Text>
@@ -187,7 +224,19 @@ const PlanoIntervencaoScreen = ({ navigation, route }) => {
             ))}
 
             <TouchableOpacity style={styles.addButton} onPress={handleAddBehaviorPicker}>
-              <Text style={styles.addButtonText}>Adicionar Comportamento</Text>
+              <Text style={styles.addButtonText}>Adicionar Comportamento (Picker)</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.label}>Adicionar novo comportamento (manual):</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nome do novo comportamento"
+              value={newBehaviorName}
+              onChangeText={setNewBehaviorName}
+            />
+
+            <TouchableOpacity style={styles.addButton} onPress={handleAddNewBehavior}>
+              <Text style={styles.addButtonText}>Adicionar novo comportamento</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
@@ -204,14 +253,25 @@ const styles = StyleSheet.create({
   container: {
     padding: 20
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#2f6b5e'
+  },
   label: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 10
+    marginBottom: 10,
+    color: '#2f6b5e'
   },
   pickerWrapper: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#2f6b5e',
     borderRadius: 10,
     marginBottom: 20,
     overflow: 'hidden'
@@ -224,7 +284,8 @@ const styles = StyleSheet.create({
   },
   behaviorListItem: {
     fontSize: 16,
-    marginBottom: 5
+    marginBottom: 5,
+    color: '#333'
   },
   behaviorRow: {
     flexDirection: 'row',
@@ -234,13 +295,20 @@ const styles = StyleSheet.create({
   behaviorPickerWrapper: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#2f6b5e',
     borderRadius: 10,
     overflow: 'hidden'
   },
+  input: {
+    borderWidth: 1,
+    borderColor: '#2f6b5e',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10
+  },
   removeButton: {
     fontSize: 24,
-    color: 'red',
+    color: '#e74c3c',
     marginLeft: 10
   },
   addButton: {
@@ -252,7 +320,8 @@ const styles = StyleSheet.create({
   },
   addButtonText: {
     color: 'white',
-    fontWeight: 'bold'
+    fontWeight: 'bold',
+    fontSize: 16
   },
   nextButton: {
     backgroundColor: '#4a90e2',
@@ -262,7 +331,8 @@ const styles = StyleSheet.create({
   },
   nextButtonText: {
     color: 'white',
-    fontWeight: 'bold'
+    fontWeight: 'bold',
+    fontSize: 18
   }
 });
 

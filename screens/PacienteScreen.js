@@ -20,17 +20,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { mask as masker, unMask } from 'react-native-mask-text';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const mockPacientes = [
-  { id: 1, nome: 'João Silva', idade: 35, status: 'Ativo', diagnostico: 'Ansiedade' },
-  { id: 2, nome: 'Maria Oliveira', idade: 28, status: 'Inativo', diagnostico: 'Depressão' },
-  { id: 3, nome: 'Carlos Souza', idade: 42, status: 'Ativo', diagnostico: 'TOC' },
-  { id: 4, nome: 'Fernanda Lima', idade: 30, status: 'Ativo', diagnostico: 'Transtorno Bipolar' },
-  { id: 5, nome: 'Lucas Costa', idade: 19, status: 'Ativo', diagnostico: 'Fobia Social' },
-];
-
 const PacienteScreen = ({ navigation }) => {
   const [showForm, setShowForm] = useState(false);
-  const [managingPatients, setManagingPatients] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [diagnoses, setDiagnoses] = useState([]);
   const [showDiagnosisModal, setShowDiagnosisModal] = useState(false);
@@ -109,7 +100,6 @@ const PacienteScreen = ({ navigation }) => {
         break;
       case 'Cadastrar Paciente':
         setShowForm(true);
-        setManagingPatients(false);
         fetchDiagnoses();
         setFormData({
           email: '',
@@ -142,10 +132,6 @@ const PacienteScreen = ({ navigation }) => {
           consent_form: false,
           authorization_to_share_data: false
         });
-        break;
-      case 'Gerenciar Pacientes':
-        setManagingPatients(true);
-        setShowForm(false);
         break;
       default:
         Alert.alert('Ação', `Fui clicado: ${action}`);
@@ -580,42 +566,12 @@ const PacienteScreen = ({ navigation }) => {
                 <Text style={styles.cancelButtonText}>Cancelar</Text>
               </TouchableOpacity>
             </ScrollView>
-          ) : managingPatients ? (
-            <View style={{ flex: 1 }}>
-              <ScrollView>
-                {mockPacientes.map((paciente) => (
-                  <View key={paciente.id} style={styles.manageCard}>
-                    <View style={styles.manageTextContainer}>
-                      <Text style={styles.patientText}>Nome: {paciente.nome}</Text>
-                      <Text style={styles.patientText}>Idade: {paciente.idade}</Text>
-                      <Text style={styles.patientText}>Diagnóstico: {paciente.diagnostico}</Text>
-                    </View>
-                    <View style={styles.icons}>
-                      <TouchableOpacity onPress={() => Alert.alert('Edição', 'Editar paciente')}>
-                        <Ionicons name="pencil-outline" size={24} color="#2980b9" />
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => Alert.alert('Exclusão', 'Excluir paciente')}>
-                        <Ionicons name="close-circle-outline" size={24} color="#c0392b" style={{ marginLeft: 10 }} />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ))}
-              </ScrollView>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setManagingPatients(false)}>
-                <Text style={styles.cancelButtonText}>Voltar</Text>
-              </TouchableOpacity>
-            </View>
           ) : (
             <View style={styles.gridContainer}>
               <SquareCard 
                 iconName="person-add-outline" 
                 description="Cadastrar Paciente"
                 onPress={() => handleCardPress('Cadastrar Paciente')}
-              />
-              <SquareCard 
-                iconName="settings-outline" 
-                description="Gerenciar Pacientes"
-                onPress={() => handleCardPress('Gerenciar Pacientes')}
               />
               <SquareCard 
                 iconName="arrow-back-outline" 
@@ -739,26 +695,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
-  },
-  patientText: {
-    fontSize: 16,
-  },
-  manageCard: {
-    backgroundColor: '#ecf0f1',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  manageTextContainer: {
-    flex: 1,
-    paddingRight: 10,
-  },
-  icons: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   checkboxContainer: {
     flexDirection: 'row',

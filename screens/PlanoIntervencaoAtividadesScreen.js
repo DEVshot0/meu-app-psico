@@ -1,7 +1,11 @@
+// IMPORTS
+
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import MainLayout from '../components/MainLayout';
+
+// COMPONENT
 
 const PlanoIntervencaoAtividadesScreen = ({ navigation, route }) => {
   const { patientId, planoId, selectedBehaviors, jsonParcial } = route.params;
@@ -14,7 +18,9 @@ const PlanoIntervencaoAtividadesScreen = ({ navigation, route }) => {
         selectedActivityId: activity.id,
         activity_name: activity.activity_name,
         tries: activity.tries
-      }))
+      })),
+      newActivityName: '',
+      newActivityTries: '1'
     }))
   );
 
@@ -53,11 +59,46 @@ const PlanoIntervencaoAtividadesScreen = ({ navigation, route }) => {
     setBehaviorActivities(updated);
   };
 
+  const handleNewActivityNameChange = (behaviorIndex, value) => {
+    const updated = [...behaviorActivities];
+    updated[behaviorIndex].newActivityName = value;
+    setBehaviorActivities(updated);
+  };
+
+  const handleNewActivityTriesChange = (behaviorIndex, value) => {
+    const updated = [...behaviorActivities];
+    updated[behaviorIndex].newActivityTries = value;
+    setBehaviorActivities(updated);
+  };
+
+  const handleAddNewActivity = (behaviorIndex) => {
+    const updated = [...behaviorActivities];
+    const newName = updated[behaviorIndex].newActivityName.trim();
+    const newTries = updated[behaviorIndex].newActivityTries;
+
+    if (newName === '') {
+      alert('Digite um nome para a nova atividade!');
+      return;
+    }
+
+    updated[behaviorIndex].selectedActivities.push({
+      selectedActivityId: `novo-${Date.now()}`, // id único temporário
+      activity_name: newName,
+      tries: newTries
+    });
+
+    updated[behaviorIndex].newActivityName = '';
+    updated[behaviorIndex].newActivityTries = '1';
+
+    setBehaviorActivities(updated);
+    alert('Atividade adicionada com sucesso!');
+  };
+
   const handleNext = () => {
     const behaviorsFinal = behaviorActivities.map((behavior) => ({
       behavior_name: behavior.behavior_name,
       activities: behavior.selectedActivities
-        .filter((sa) => sa.selectedActivityId)
+        .filter((sa) => sa.selectedActivityId || sa.activity_name) // inclui também as atividades manuais
         .map((sa) => ({
           activity_name: sa.activity_name,
           tries: Array.from({ length: parseInt(sa.tries) }, () => ({
@@ -93,6 +134,8 @@ const PlanoIntervencaoAtividadesScreen = ({ navigation, route }) => {
       jsonParcial: novoJsonParcial
     });
   };
+
+  // RENDER
 
   return (
     <MainLayout title="Seleção de Atividades" navigation={navigation} showBackButton={true}>
@@ -145,7 +188,34 @@ const PlanoIntervencaoAtividadesScreen = ({ navigation, route }) => {
               style={styles.addButton}
               onPress={() => handleAddActivityPicker(behaviorIndex)}
             >
-              <Text style={styles.addButtonText}>Adicionar Atividade</Text>
+              <Text style={styles.addButtonText}>Adicionar Atividade (Picker)</Text>
+            </TouchableOpacity>
+
+            {/* NOVA ATIVIDADE MANUAL */}
+            <Text style={styles.label}>Adicionar nova atividade (manual):</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nome da nova atividade"
+              value={behavior.newActivityName}
+              onChangeText={(value) =>
+                handleNewActivityNameChange(behaviorIndex, value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Tentativas"
+              keyboardType="numeric"
+              value={behavior.newActivityTries}
+              onChangeText={(value) =>
+                handleNewActivityTriesChange(behaviorIndex, value)
+              }
+            />
+
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => handleAddNewActivity(behaviorIndex)}
+            >
+              <Text style={styles.addButtonText}>Adicionar nova atividade</Text>
             </TouchableOpacity>
           </View>
         ))}
@@ -157,6 +227,8 @@ const PlanoIntervencaoAtividadesScreen = ({ navigation, route }) => {
     </MainLayout>
   );
 };
+
+// STYLES
 
 const styles = StyleSheet.create({
   container: {
@@ -234,6 +306,20 @@ const styles = StyleSheet.create({
   nextButtonText: {
     color: 'white',
     fontWeight: 'bold'
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 5,
+    marginTop: 10,
+    color: '#2f6b5e'
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#2f6b5e',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10
   }
 });
 

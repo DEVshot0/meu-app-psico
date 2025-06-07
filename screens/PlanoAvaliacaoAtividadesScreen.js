@@ -4,7 +4,7 @@ import { Picker } from '@react-native-picker/picker';
 import MainLayout from '../components/MainLayout';
 
 const PlanoAvaliacaoAtividadesScreen = ({ navigation, route }) => {
-  const { patientId, planoId, selectedBehaviors } = route.params;
+  const { patientId, planoId, selectedBehaviors, jsonParcial } = route.params;
 
   const [behaviorActivities, setBehaviorActivities] = useState(
     selectedBehaviors.map((behavior) => ({
@@ -14,7 +14,9 @@ const PlanoAvaliacaoAtividadesScreen = ({ navigation, route }) => {
         selectedActivityId: activity.id,
         activity_name: activity.activity_name,
         tries: activity.tries
-      }))
+      })),
+      newActivityName: '',
+      newActivityTries: '1'
     }))
   );
 
@@ -53,11 +55,46 @@ const PlanoAvaliacaoAtividadesScreen = ({ navigation, route }) => {
     setBehaviorActivities(updated);
   };
 
+  const handleNewActivityNameChange = (behaviorIndex, value) => {
+    const updated = [...behaviorActivities];
+    updated[behaviorIndex].newActivityName = value;
+    setBehaviorActivities(updated);
+  };
+
+  const handleNewActivityTriesChange = (behaviorIndex, value) => {
+    const updated = [...behaviorActivities];
+    updated[behaviorIndex].newActivityTries = value;
+    setBehaviorActivities(updated);
+  };
+
+  const handleAddNewActivity = (behaviorIndex) => {
+    const updated = [...behaviorActivities];
+    const newName = updated[behaviorIndex].newActivityName.trim();
+    const newTries = updated[behaviorIndex].newActivityTries;
+
+    if (newName === '') {
+      alert('Digite um nome para a nova atividade!');
+      return;
+    }
+
+    updated[behaviorIndex].selectedActivities.push({
+      selectedActivityId: `novo-${Date.now()}`,
+      activity_name: newName,
+      tries: newTries
+    });
+
+    updated[behaviorIndex].newActivityName = '';
+    updated[behaviorIndex].newActivityTries = '1';
+
+    setBehaviorActivities(updated);
+    alert('Atividade adicionada com sucesso!');
+  };
+
   const handleNext = () => {
     const behaviorsFinal = behaviorActivities.map((behavior) => ({
       behavior_name: behavior.behavior_name,
       activities: behavior.selectedActivities
-        .filter((sa) => sa.selectedActivityId)
+        .filter((sa) => sa.selectedActivityId || sa.activity_name)
         .map((sa) => ({
           activity_name: sa.activity_name,
           tries: Array.from({ length: parseInt(sa.tries) }, () => ({
@@ -68,29 +105,31 @@ const PlanoAvaliacaoAtividadesScreen = ({ navigation, route }) => {
           }))
         }))
     }));
-  
-    // Validação: pelo menos uma atividade
+
     const totalActivities = behaviorsFinal.reduce(
       (sum, behavior) => sum + behavior.activities.length,
       0
     );
-  
-    console.log('DEBUG - behaviorsFinal (Plano Avaliacao):', JSON.stringify(behaviorsFinal, null, 2));
-  
+
     if (totalActivities === 0) {
       alert('Por favor, selecione pelo menos uma atividade!');
       return;
     }
-  
-    // Navega para ExecucaoPlano, passando behaviors estruturado
+
+    const novoJsonParcial = {
+      ...jsonParcial,
+      behaviors: behaviorsFinal
+    };
+
+    console.log('JSON PARCIAL ATUALIZADO (Plano Avaliação):', JSON.stringify(novoJsonParcial, null, 2));
+
     navigation.navigate('ExecucaoPlano', {
       patientId,
       planoId,
-      behaviors: behaviorsFinal
+      behaviors: behaviorsFinal,
+      jsonParcial: novoJsonParcial
     });
   };
-  
-  
 
   return (
     <MainLayout title="Seleção de Atividades" navigation={navigation} showBackButton={true}>
@@ -99,7 +138,6 @@ const PlanoAvaliacaoAtividadesScreen = ({ navigation, route }) => {
           <View key={behaviorIndex} style={styles.behaviorBlock}>
             <Text style={styles.behaviorTitle}>{behavior.behavior_name}</Text>
 
-            {/* Cabeçalho das colunas */}
             <View style={styles.headerRow}>
               <Text style={styles.headerText}>Atividade</Text>
               <Text style={styles.headerText}>Tentativas</Text>
@@ -144,7 +182,33 @@ const PlanoAvaliacaoAtividadesScreen = ({ navigation, route }) => {
               style={styles.addButton}
               onPress={() => handleAddActivityPicker(behaviorIndex)}
             >
-              <Text style={styles.addButtonText}>Adicionar Atividade</Text>
+              <Text style={styles.addButtonText}>Adicionar Atividade (Picker)</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.label}>Adicionar nova atividade (manual):</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nome da nova atividade"
+              value={behavior.newActivityName}
+              onChangeText={(value) =>
+                handleNewActivityNameChange(behaviorIndex, value)
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Tentativas"
+              keyboardType="numeric"
+              value={behavior.newActivityTries}
+              onChangeText={(value) =>
+                handleNewActivityTriesChange(behaviorIndex, value)
+              }
+            />
+
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => handleAddNewActivity(behaviorIndex)}
+            >
+              <Text style={styles.addButtonText}>Adicionar nova atividade</Text>
             </TouchableOpacity>
           </View>
         ))}
@@ -156,6 +220,8 @@ const PlanoAvaliacaoAtividadesScreen = ({ navigation, route }) => {
     </MainLayout>
   );
 };
+
+// STYLES
 
 const styles = StyleSheet.create({
   container: {
@@ -233,6 +299,20 @@ const styles = StyleSheet.create({
   nextButtonText: {
     color: 'white',
     fontWeight: 'bold'
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 5,
+    marginTop: 10,
+    color: '#2f6b5e'
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#2f6b5e',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10
   }
 });
 

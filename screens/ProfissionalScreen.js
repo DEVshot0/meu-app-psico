@@ -335,6 +335,11 @@ const ProfissionalScreen = ({ navigation }) => {
               onPress={() => handleCardPress('Cadastrar')}
             />
             <SquareCard
+              iconName="people-outline"
+              description="Gerenciar Profissionais"
+              onPress={() => navigation.navigate('GerenciarProfissionais')}
+            />
+            <SquareCard
               iconName="arrow-back-outline"
               description="Voltar"
               onPress={() => handleCardPress('Voltar')}

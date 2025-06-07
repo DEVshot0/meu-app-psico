@@ -1,70 +1,92 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  TextInput
+} from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import MainLayout from '../components/MainLayout';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PlanoAvaliacaoScreen = ({ navigation, route }) => {
-  const { patientId } = route.params;
+  const { patientId, jsonParcial } = route.params;
 
-  const planos = [
-    {
-      id: 3,
-      plan_name: "Plano Avaliacao 1",
-      plan_type: "avaliacao",
-      behaviors: [
-        {
-          id: 1,
-          behavior_name: "Percepção",
-          activities: [
-            { id: 1, activity_name: "Atividade E1", tries: 5 },
-            { id: 2, activity_name: "Atividade E2", tries: 6 }
-          ]
-        },
-        {
-          id: 2,
-          behavior_name: "Tato",
-          activities: [
-            { id: 3, activity_name: "Atividade F1", tries: 8 },
-            { id: 4, activity_name: "Atividade F2", tries: 7 }
-          ]
-        }
-      ]
-    },
-    {
-      id: 4,
-      plan_name: "Plano Avaliacao 2",
-      plan_type: "avaliacao",
-      behaviors: [
-        {
-          id: 1,
-          behavior_name: "Audição",
-          activities: [
-            { id: 1, activity_name: "Atividade G1", tries: 9 },
-            { id: 2, activity_name: "Atividade G2", tries: 10 }
-          ]
-        },
-        {
-          id: 2,
-          behavior_name: "Visão",
-          activities: [
-            { id: 3, activity_name: "Atividade H1", tries: 6 },
-            { id: 4, activity_name: "Atividade H2", tries: 8 }
-          ]
-        }
-      ]
-    }
-  ];
-
+  const [isLoading, setIsLoading] = useState(true);
+  const [planos, setPlanos] = useState([]);
   const [selectedPlanoId, setSelectedPlanoId] = useState('');
   const [availableBehaviors, setAvailableBehaviors] = useState([]);
+  const [externalBehaviors, setExternalBehaviors] = useState([]);
   const [selectedBehaviorPickers, setSelectedBehaviorPickers] = useState([]);
+  const [newBehaviorName, setNewBehaviorName] = useState('');
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const csrfToken = await AsyncStorage.getItem('csrfToken');
+        if (!csrfToken) {
+          throw new Error('Token CSRF não encontrado');
+        }
+
+        // Buscar planos
+        const responsePlans = await fetch('https://iscdeploy.pythonanywhere.com/api/v1/plans/full/', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Referer': 'https://iscdeploy.pythonanywhere.com/',
+            'X-CSRFToken': csrfToken,
+          },
+        });
+
+        if (!responsePlans.ok) {
+          throw new Error('Falha ao obter planos');
+        }
+
+        const plansData = await responsePlans.json();
+        const planosAvaliacao = plansData.filter(plano => 
+          plano.plan_type.toLowerCase().includes('avaliacao') || 
+          plano.plan_type.toLowerCase().includes('avaliação')
+        );
+        setPlanos(planosAvaliacao);
+
+        // Buscar behaviors externos
+        const responseBehaviors = await fetch('https://iscdeploy.pythonanywhere.com/api/v1/behaviors/', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Referer': 'https://iscdeploy.pythonanywhere.com/',
+            'X-CSRFToken': csrfToken,
+          },
+        });
+
+        if (!responseBehaviors.ok) {
+          throw new Error('Falha ao obter comportamentos');
+        }
+
+        const behaviorsData = await responseBehaviors.json();
+        setExternalBehaviors(behaviorsData);
+
+      } catch (error) {
+        console.error('Erro ao buscar dados:', error);
+        Alert.alert('Erro', 'Não foi possível carregar os dados');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handlePlanoChange = (value) => {
     setSelectedPlanoId(value);
     const planoSelecionado = planos.find((p) => p.id === value);
     if (planoSelecionado) {
-      setAvailableBehaviors(planoSelecionado.behaviors);
-      setSelectedBehaviorPickers([]); // reseta os pickers de comportamento
+      setAvailableBehaviors(planoSelecionado.behaviors || []);
+      setSelectedBehaviorPickers([]);
     } else {
       setAvailableBehaviors([]);
       setSelectedBehaviorPickers([]);
@@ -90,47 +112,84 @@ const PlanoAvaliacaoScreen = ({ navigation, route }) => {
     setSelectedBehaviorPickers(updatedPickers);
   };
 
-  const handleNext = () => {
-    if (!selectedPlanoId) {
-      alert('Por favor, selecione um plano primeiro!');
+  const handleAddNewBehavior = () => {
+    if (newBehaviorName.trim() === '') {
+      Alert.alert('Atenção', 'Digite um nome para o comportamento');
       return;
     }
-  
+
+    const newBehavior = {
+      id: `novo-${Date.now()}`, // id único temporário
+      behavior_name: newBehaviorName.trim(),
+      activities: [] // sem atividades ainda
+    };
+
+    setAvailableBehaviors((prev) => [...prev, newBehavior]);
+    setNewBehaviorName('');
+    Alert.alert('Sucesso', 'Comportamento adicionado com sucesso!');
+  };
+
+  const handleNext = () => {
+    if (!selectedPlanoId) {
+      Alert.alert('Atenção', 'Por favor, selecione um plano primeiro!');
+      return;
+    }
+
     let selectedBehaviors = [];
-  
+
     if (selectedBehaviorPickers.length === 0) {
-      // Caso não tenha pickers adicionados, usa os comportamentos do plano
       if (availableBehaviors.length === 0) {
-        alert('Este plano não possui comportamentos e você não adicionou nenhum.');
+        Alert.alert('Atenção', 'Este plano não possui comportamentos e você não adicionou nenhum.');
         return;
       } else {
         selectedBehaviors = availableBehaviors;
       }
     } else {
-      // Caso tenha pickers, usa os que foram selecionados
       selectedBehaviors = selectedBehaviorPickers
         .map((picker) => availableBehaviors.find((b) => b.id === picker.selectedBehaviorId))
         .filter(Boolean);
-  
+
       if (selectedBehaviors.length === 0) {
-        alert('Por favor, selecione comportamentos válidos!');
+        Alert.alert('Atenção', 'Por favor, selecione comportamentos válidos!');
         return;
       }
     }
-  
-    // Pegamos o nome do plano:
+
     const planoSelecionado = planos.find((p) => p.id === selectedPlanoId);
-  
-    // Navega para tela de ATIVIDADES, levando plan_name e behaviors
+
+    const novoJsonParcial = {
+      ...jsonParcial,
+      plan_name: planoSelecionado ? planoSelecionado.plan_name : '',
+      behaviors: selectedBehaviors.map((b) => ({
+        behavior_name: b.behavior_name,
+        activities: b.activities ? b.activities.map((a) => ({
+          activity_name: a.activity_name,
+          tries: []
+        })) : []
+      }))
+    };
+
+    console.log('JSON PARCIAL ATUALIZADO:', JSON.stringify(novoJsonParcial, null, 2));
+
     navigation.navigate('PlanoAvaliacaoAtividades', {
       patientId,
       planoId: selectedPlanoId,
       plan_name: planoSelecionado ? planoSelecionado.plan_name : '',
-      selectedBehaviors
+      selectedBehaviors,
+      jsonParcial: novoJsonParcial
     });
   };
-  
-  
+
+  if (isLoading) {
+    return (
+      <MainLayout title="Plano de Avaliação" navigation={navigation} showBackButton={true}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2f6b5e" />
+          <Text style={styles.loadingText}>Carregando planos...</Text>
+        </View>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout title="Plano de Avaliação" navigation={navigation} showBackButton={true}>
@@ -148,15 +207,17 @@ const PlanoAvaliacaoScreen = ({ navigation, route }) => {
 
         {selectedPlanoId !== '' && (
           <>
-            {/* VISUALIZAÇÃO DOS COMPORTAMENTOS */}
             <Text style={styles.label}>Comportamentos do plano:</Text>
             <View style={styles.behaviorList}>
-              {availableBehaviors.map((b) => (
-                <Text key={b.id} style={styles.behaviorListItem}>• {b.behavior_name}</Text>
-              ))}
+              {availableBehaviors.length > 0 ? (
+                availableBehaviors.map((b) => (
+                  <Text key={b.id} style={styles.behaviorListItem}>• {b.behavior_name}</Text>
+                ))
+              ) : (
+                <Text style={styles.behaviorListItem}>Nenhum comportamento disponível</Text>
+              )}
             </View>
 
-            {/* SELEÇÃO DE COMPORTAMENTOS */}
             <Text style={styles.label}>Selecione os comportamentos:</Text>
 
             {selectedBehaviorPickers.map((picker, index) => (
@@ -180,7 +241,19 @@ const PlanoAvaliacaoScreen = ({ navigation, route }) => {
             ))}
 
             <TouchableOpacity style={styles.addButton} onPress={handleAddBehaviorPicker}>
-              <Text style={styles.addButtonText}>Adicionar Comportamento</Text>
+              <Text style={styles.addButtonText}>Adicionar Comportamento (Picker)</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.label}>Adicionar novo comportamento (manual):</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nome do novo comportamento"
+              value={newBehaviorName}
+              onChangeText={setNewBehaviorName}
+            />
+
+            <TouchableOpacity style={styles.addButton} onPress={handleAddNewBehavior}>
+              <Text style={styles.addButtonText}>Adicionar novo comportamento</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
@@ -197,14 +270,25 @@ const styles = StyleSheet.create({
   container: {
     padding: 20
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#2f6b5e'
+  },
   label: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 10
+    marginBottom: 10,
+    color: '#2f6b5e'
   },
   pickerWrapper: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#2f6b5e',
     borderRadius: 10,
     marginBottom: 20,
     overflow: 'hidden'
@@ -217,7 +301,8 @@ const styles = StyleSheet.create({
   },
   behaviorListItem: {
     fontSize: 16,
-    marginBottom: 5
+    marginBottom: 5,
+    color: '#333'
   },
   behaviorRow: {
     flexDirection: 'row',
@@ -227,13 +312,20 @@ const styles = StyleSheet.create({
   behaviorPickerWrapper: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#2f6b5e',
     borderRadius: 10,
     overflow: 'hidden'
   },
+  input: {
+    borderWidth: 1,
+    borderColor: '#2f6b5e',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10
+  },
   removeButton: {
     fontSize: 24,
-    color: 'red',
+    color: '#e74c3c',
     marginLeft: 10
   },
   addButton: {
@@ -245,7 +337,8 @@ const styles = StyleSheet.create({
   },
   addButtonText: {
     color: 'white',
-    fontWeight: 'bold'
+    fontWeight: 'bold',
+    fontSize: 16
   },
   nextButton: {
     backgroundColor: '#4a90e2',
@@ -255,7 +348,8 @@ const styles = StyleSheet.create({
   },
   nextButtonText: {
     color: 'white',
-    fontWeight: 'bold'
+    fontWeight: 'bold',
+    fontSize: 18
   }
 });
 
