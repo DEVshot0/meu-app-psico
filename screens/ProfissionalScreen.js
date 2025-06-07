@@ -116,6 +116,16 @@ const ProfissionalScreen = ({ navigation }) => {
       }
 
       Alert.alert('Sucesso', `${tipoCadastro} cadastrado com sucesso!`);
+      
+      // Navega para a tela de edição com o user_id retornado
+      const userId = responseData['user id'];
+      const screenName = tipoCadastro === 'Profissional' 
+        ? 'EditarProfissional' 
+        : 'EditarAplicador';
+      
+      navigation.navigate(screenName, { userId });
+
+      // Reseta o formulário
       setShowForm(false);
       setFormData({
         full_name: '',

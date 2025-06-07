@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, Platform } from 'react-native';
 import MainLayout from '../components/MainLayout';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 
 const EditarAplicadorScreen = ({ navigation, route }) => {
   const [aplicator, setAplicator] = useState({});
   const [isEditing, setIsEditing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     const fetchAplicator = async () => {
@@ -81,6 +84,57 @@ const EditarAplicadorScreen = ({ navigation, route }) => {
     navigation.navigate('AplicarPlano', { jsonParcial });
   };
 
+  const handleUploadFile = async () => {
+    try {
+      setIsUploading(true);
+      
+      // Selecionar o arquivo
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*', // Aceita qualquer tipo de arquivo
+        copyToCacheDirectory: true,
+      });
+
+      if (result.type === 'success') {
+        // Preparar os dados para envio
+        const formData = new FormData();
+        formData.append('user_id', aplicator.user_id);
+        formData.append('attachments', {
+          uri: result.uri,
+          name: result.name,
+          type: result.mimeType || 'application/octet-stream',
+        });
+
+        // Enviar para o endpoint
+        const response = await fetch('https://iscdeploy.pythonanywhere.com/api/v1/upload-files/', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+        if (response.ok) {
+          Alert.alert('Sucesso', 'Arquivo enviado com sucesso!');
+          // Atualizar a lista de anexos do aplicador
+          const updatedAplicator = await response.json();
+          setAplicator(prev => ({
+            ...prev,
+            attachments: updatedAplicator.attachments
+          }));
+        } else {
+          const errorData = await response.json();
+          console.error('Erro ao enviar arquivo:', errorData);
+          Alert.alert('Erro', 'Não foi possível enviar o arquivo.');
+        }
+      }
+    } catch (error) {
+      console.error('Erro no upload:', error);
+      Alert.alert('Erro', 'Ocorreu um erro ao tentar enviar o arquivo.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <MainLayout 
       title="Editar Aplicador" 
@@ -147,6 +201,16 @@ const EditarAplicadorScreen = ({ navigation, route }) => {
               <Text style={styles.label}><Text style={styles.bold}>CPF:</Text> {aplicator.cpf}</Text>
               <Text style={styles.label}><Text style={styles.bold}>Telefone:</Text> {aplicator.phone_number}</Text>
               <Text style={styles.label}><Text style={styles.bold}>Cargo:</Text> {aplicator.position}</Text>
+              {aplicator.attachments && aplicator.attachments.length > 0 && (
+                <View style={styles.attachmentsContainer}>
+                  <Text style={styles.bold}>Anexos:</Text>
+                  {aplicator.attachments.map((attachment, index) => (
+                    <Text key={index} style={styles.attachmentText}>
+                      {attachment.name || `Arquivo ${index + 1}`}
+                    </Text>
+                  ))}
+                </View>
+              )}
             </>
           )}
         </View>
@@ -172,6 +236,16 @@ const EditarAplicadorScreen = ({ navigation, route }) => {
           onPress={handleApplyPlan}
         >
           <Text style={styles.mainButtonText}>Aplicar Plano</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.uploadButton} 
+          onPress={handleUploadFile}
+          disabled={isUploading}
+        >
+          <Text style={styles.uploadButtonText}>
+            {isUploading ? 'Enviando...' : 'Adicionar Arquivo'}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </MainLayout>
@@ -244,6 +318,26 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  uploadButton: {
+    backgroundColor: '#4a7c72',
+    paddingVertical: 15,
+    borderRadius: 50,
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  uploadButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  attachmentsContainer: {
+    marginTop: 10,
+  },
+  attachmentText: {
+    fontSize: 14,
+    color: '#2f6b5e',
+    marginBottom: 5,
   },
 });
 

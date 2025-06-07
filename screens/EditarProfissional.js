@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, Platform } from 'react-native';
 import MainLayout from '../components/MainLayout';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 
 const EditarProfissionalScreen = ({ navigation, route }) => {
   const [professional, setProfessional] = useState({});
   const [isEditing, setIsEditing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     const fetchProfessional = async () => {
@@ -78,6 +81,56 @@ const EditarProfissionalScreen = ({ navigation, route }) => {
     console.log('JSON PARCIAL ATÉ O MOMENTO:', JSON.stringify(jsonParcial, null, 2));
 
     navigation.navigate('AplicarPlano', { jsonParcial });
+  };
+
+  const handleUploadFile = async () => {
+    try {
+      setIsUploading(true);
+      
+      // Selecionar o arquivo
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*', // Aceita qualquer tipo de arquivo
+        copyToCacheDirectory: true,
+      });
+
+      if (result.type === 'success') {
+        // Ler o arquivo como base64
+        const fileContent = await FileSystem.readAsStringAsync(result.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+
+        // Preparar os dados para envio
+        const formData = new FormData();
+        formData.append('user_id', professional.user_id);
+        formData.append('attachments', {
+          uri: result.uri,
+          name: result.name,
+          type: result.mimeType || 'application/octet-stream',
+        });
+
+        // Enviar para o endpoint
+        const response = await fetch('https://iscdeploy.pythonanywhere.com/api/v1/upload-files/', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+        if (response.ok) {
+          Alert.alert('Sucesso', 'Arquivo enviado com sucesso!');
+        } else {
+          const errorData = await response.json();
+          console.error('Erro ao enviar arquivo:', errorData);
+          Alert.alert('Erro', 'Não foi possível enviar o arquivo.');
+        }
+      }
+    } catch (error) {
+      console.error('Erro no upload:', error);
+      Alert.alert('Erro', 'Ocorreu um erro ao tentar enviar o arquivo.');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -172,6 +225,16 @@ const EditarProfissionalScreen = ({ navigation, route }) => {
         >
           <Text style={styles.mainButtonText}>Aplicar Plano</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.uploadButton} 
+          onPress={handleUploadFile}
+          disabled={isUploading}
+        >
+          <Text style={styles.uploadButtonText}>
+            {isUploading ? 'Enviando...' : 'Adicionar Arquivo'}
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
     </MainLayout>
   );
@@ -240,6 +303,18 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   mainButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  uploadButton: {
+    backgroundColor: '#4a7c72',
+    paddingVertical: 15,
+    borderRadius: 50,
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  uploadButtonText: {
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',

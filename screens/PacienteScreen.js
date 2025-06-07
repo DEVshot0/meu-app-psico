@@ -211,6 +211,12 @@ const PacienteScreen = ({ navigation }) => {
 
       if (response.ok) {
         Alert.alert('Sucesso', 'Paciente cadastrado com sucesso!');
+        
+        // Navega para a tela de edição com o user_id retornado
+        const userId = data['user id'];
+        navigation.navigate('EditarPaciente', { userId });
+
+        // Reseta o formulário
         setShowForm(false);
         setFormData({
           email: '',

@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, Modal } from 'react-native';
 import MainLayout from '../components/MainLayout';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 
 const EditarPacienteScreen = ({ navigation, route }) => {
   const [paciente, setPaciente] = useState({});
   const [isEditing, setIsEditing] = useState(false);
   const [diagnosesList, setDiagnosesList] = useState([]);
   const [showDiagnosesModal, setShowDiagnosesModal] = useState(false);
-
-  const [showModal, setShowModal] = useState(false);
-  const [selectedPlanType, setSelectedPlanType] = useState('');
-  const [aplicatorName, setAplicatorName] = useState('');
-  const [aplicationDate, setAplicationDate] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     const fetchPaciente = async () => {
@@ -38,17 +36,10 @@ const EditarPacienteScreen = ({ navigation, route }) => {
 
     fetchPaciente();
     fetchDiagnoses();
-
-    const hoje = new Date();
-    const dia = String(hoje.getDate()).padStart(2, '0');
-    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-    const ano = hoje.getFullYear();
-    const dataFormatada = `${ano}-${mes}-${dia}`;
-    setAplicationDate(dataFormatada);
   }, []);
 
   const toggleDiagnosis = (id) => {
-    let newDiagnoses = [...paciente.diagnoses];
+    let newDiagnoses = [...paciente.diagnoses || []];
     if (newDiagnoses.includes(id)) {
       newDiagnoses = newDiagnoses.filter((item) => item !== id);
     } else {
@@ -80,8 +71,6 @@ const EditarPacienteScreen = ({ navigation, route }) => {
         diagnoses: paciente.diagnoses
       };
 
-      console.log('Payload enviado no PUT:', JSON.stringify(payload, null, 2));
-
       const response = await fetch(`https://iscdeploy.pythonanywhere.com/api/v1/patient/${paciente.id}/`, {
         method: 'PUT',
         headers: {
@@ -101,6 +90,54 @@ const EditarPacienteScreen = ({ navigation, route }) => {
     } catch (error) {
       console.error('Erro ao atualizar paciente:', error);
       Alert.alert('Erro', 'Ocorreu um erro ao tentar atualizar os dados.');
+    }
+  };
+
+  const handleUploadFile = async () => {
+    try {
+      setIsUploading(true);
+      
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*',
+        copyToCacheDirectory: true,
+      });
+
+      if (result.type === 'success') {
+        const formData = new FormData();
+        formData.append('user_id', paciente.id); // Usando o ID do paciente
+        formData.append('attachments', {
+          uri: result.uri,
+          name: result.name,
+          type: result.mimeType || 'application/octet-stream',
+        });
+
+        const response = await fetch('https://iscdeploy.pythonanywhere.com/api/v1/upload-files/', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+        if (response.ok) {
+          Alert.alert('Sucesso', 'Arquivo enviado com sucesso!');
+          // Atualizar os anexos do paciente
+          const updatedData = await response.json();
+          setPaciente(prev => ({
+            ...prev,
+            attachments: updatedData.attachments
+          }));
+        } else {
+          const errorData = await response.json();
+          console.error('Erro ao enviar arquivo:', errorData);
+          Alert.alert('Erro', 'Não foi possível enviar o arquivo.');
+        }
+      }
+    } catch (error) {
+      console.error('Erro no upload:', error);
+      Alert.alert('Erro', 'Ocorreu um erro ao tentar enviar o arquivo.');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -130,14 +167,14 @@ const EditarPacienteScreen = ({ navigation, route }) => {
                 onChangeText={(text) => setPaciente({ ...paciente, patient_name: text })}
                 placeholder="Nome"
               />
-              {/* Adicione os demais campos conforme mostrado anteriormente */}
+              {/* Outros campos de edição */}
               <TouchableOpacity
                 style={styles.input}
                 onPress={() => setShowDiagnosesModal(true)}
               >
-                <Text style={{ color: paciente.diagnoses && paciente.diagnoses.length > 0 ? '#000' : '#999' }}>
-                  {paciente.diagnoses && paciente.diagnoses.length > 0
-                    ? `Diagnoses selecionadas: ${paciente.diagnoses.join(', ')}`
+                <Text style={{ color: paciente.diagnoses?.length > 0 ? '#000' : '#999' }}>
+                  {paciente.diagnoses?.length > 0
+                    ? `Diagnósticos selecionados: ${paciente.diagnoses.join(', ')}`
                     : 'Selecionar Diagnósticos'}
                 </Text>
               </TouchableOpacity>
@@ -158,7 +195,7 @@ const EditarPacienteScreen = ({ navigation, route }) => {
                         onPress={() => toggleDiagnosis(diag.id)}
                       >
                         <Text style={{ flex: 1 }}>{diag.diagnosis}</Text>
-                        <Text>{paciente.diagnoses && paciente.diagnoses.includes(diag.id) ? '✔️' : '⬜️'}</Text>
+                        <Text>{paciente.diagnoses?.includes(diag.id) ? '✔️' : '⬜️'}</Text>
                       </TouchableOpacity>
                     ))}
                     <TouchableOpacity
@@ -174,7 +211,17 @@ const EditarPacienteScreen = ({ navigation, route }) => {
           ) : (
             <>
               <Text style={styles.label}><Text style={styles.bold}>Nome:</Text> {paciente.patient_name}</Text>
-              <Text style={styles.label}><Text style={styles.bold}>Diagnósticos:</Text> {paciente.diagnoses ? paciente.diagnoses.join(', ') : 'Nenhum'}</Text>
+              <Text style={styles.label}><Text style={styles.bold}>Diagnósticos:</Text> {paciente.diagnoses?.join(', ') || 'Nenhum'}</Text>
+              {paciente.attachments?.length > 0 && (
+                <View style={styles.attachmentsContainer}>
+                  <Text style={styles.bold}>Anexos:</Text>
+                  {paciente.attachments.map((file, index) => (
+                    <Text key={index} style={styles.attachmentText}>
+                      {file.name || `Arquivo ${index + 1}`}
+                    </Text>
+                  ))}
+                </View>
+              )}
             </>
           )}
         </View>
@@ -210,10 +257,13 @@ const EditarPacienteScreen = ({ navigation, route }) => {
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.mainButton} 
-          onPress={() => handleAction('Enviar e-mail')}
+          style={styles.uploadButton}
+          onPress={handleUploadFile}
+          disabled={isUploading}
         >
-          <Text style={styles.mainButtonText}>Enviar e-mail</Text>
+          <Text style={styles.uploadButtonText}>
+            {isUploading ? 'Enviando...' : 'Adicionar Arquivo'}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </MainLayout>
@@ -287,11 +337,24 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  uploadButton: {
+    backgroundColor: '#4a7c72',
+    paddingVertical: 15,
+    borderRadius: 50,
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  uploadButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
   cancelButton: {
     backgroundColor: '#e74c3c',
     paddingVertical: 12,
     borderRadius: 25,
     alignItems: 'center',
+    marginTop: 10,
   },
   cancelButtonText: {
     color: 'white',
@@ -310,6 +373,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 20,
     width: '100%',
+    maxHeight: '80%',
   },
   modalTitle: {
     fontSize: 20,
@@ -324,6 +388,15 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
+  },
+  attachmentsContainer: {
+    marginTop: 10,
+    marginBottom: 15,
+  },
+  attachmentText: {
+    fontSize: 14,
+    color: '#2f6b5e',
+    marginBottom: 5,
   },
 });
 
