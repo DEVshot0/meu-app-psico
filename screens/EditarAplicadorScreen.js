@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
 import MainLayout from '../components/MainLayout';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
@@ -10,11 +10,27 @@ const EditarAplicadorScreen = ({ navigation, route }) => {
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
+    console.log('ROUTE.PARAMS:', route.params);
+
     const fetchAplicator = async () => {
       try {
-        const response = await fetch(`https://iscdeploy.pythonanywhere.com/api/v1/aplicator/${route.params.aplicator.id}/`);
-        const data = await response.json();
-        setAplicator(data);
+        if (!route.params?.userId) {
+          console.error('userId não fornecido.');
+          Alert.alert('Erro', 'userId não foi passado.');
+          return;
+        }
+
+        const response = await fetch(`https://iscdeploy.pythonanywhere.com/api/v1/aplicator/?user_id=${route.params.userId}`);
+        console.log('Response status:', response.status);
+
+        const dataList = await response.json();
+        console.log('Data retornado:', dataList);
+
+        if (Array.isArray(dataList) && dataList.length > 0) {
+          setAplicator(dataList[0]);
+        } else {
+          Alert.alert('Erro', 'Nenhum aplicador encontrado para este userId.');
+        }
       } catch (error) {
         console.error('Erro ao buscar aplicador:', error);
         Alert.alert('Erro', 'Não foi possível carregar os dados do aplicador.');
@@ -72,8 +88,8 @@ const EditarAplicadorScreen = ({ navigation, route }) => {
 
   const handleApplyPlan = () => {
     const jsonParcial = {
-      patient_name: "", // será selecionado depois
-      plan_name: "",    // será preenchido depois
+      patient_name: "",
+      plan_name: "",
       aplication_date: new Date().toISOString().slice(0, 10),
       aplicator_name: aplicator.full_name,
       behaviors: []
@@ -87,15 +103,17 @@ const EditarAplicadorScreen = ({ navigation, route }) => {
   const handleUploadFile = async () => {
     try {
       setIsUploading(true);
-      
-      // Selecionar o arquivo
+
       const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*', // Aceita qualquer tipo de arquivo
+        type: '*/*',
         copyToCacheDirectory: true,
       });
 
       if (result.type === 'success') {
-        // Preparar os dados para envio
+        const fileContent = await FileSystem.readAsStringAsync(result.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+
         const formData = new FormData();
         formData.append('user_id', aplicator.user_id);
         formData.append('attachments', {
@@ -104,7 +122,6 @@ const EditarAplicadorScreen = ({ navigation, route }) => {
           type: result.mimeType || 'application/octet-stream',
         });
 
-        // Enviar para o endpoint
         const response = await fetch('https://iscdeploy.pythonanywhere.com/api/v1/upload-files/', {
           method: 'POST',
           body: formData,
@@ -115,7 +132,6 @@ const EditarAplicadorScreen = ({ navigation, route }) => {
 
         if (response.ok) {
           Alert.alert('Sucesso', 'Arquivo enviado com sucesso!');
-          // Atualizar a lista de anexos do aplicador
           const updatedAplicator = await response.json();
           setAplicator(prev => ({
             ...prev,

@@ -80,7 +80,8 @@ const GerenciarAplicadoresScreen = ({ navigation }) => {
   };
 
   const handleEdit = (aplicador) => {
-    navigation.navigate('EditarAplicador', { aplicador });
+    console.log('NAVEGANDO PARA EditarAplicador COM user_id:', aplicador.user_id);
+    navigation.navigate('EditarAplicador', { userId: aplicador.user_id });
   };
 
   if (isLoading) {

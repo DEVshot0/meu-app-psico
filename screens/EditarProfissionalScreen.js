@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
 import MainLayout from '../components/MainLayout';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
@@ -10,11 +10,27 @@ const EditarProfissionalScreen = ({ navigation, route }) => {
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
+    console.log('ROUTE.PARAMS:', route.params);
+
     const fetchProfessional = async () => {
       try {
-        const response = await fetch(`https://iscdeploy.pythonanywhere.com/api/v1/professional/${route.params.professional.id}/`);
-        const data = await response.json();
-        setProfessional(data);
+        if (!route.params?.userId) {
+          console.error('userId não fornecido.');
+          Alert.alert('Erro', 'userId não foi passado.');
+          return;
+        }
+
+        const response = await fetch(`https://iscdeploy.pythonanywhere.com/api/v1/professional/?user_id=${route.params.userId}`);
+        console.log('Response status:', response.status);
+
+        const dataList = await response.json();
+        console.log('Data retornado:', dataList);
+
+        if (Array.isArray(dataList) && dataList.length > 0) {
+          setProfessional(dataList[0]);
+        } else {
+          Alert.alert('Erro', 'Nenhum profissional encontrado para este userId.');
+        }
       } catch (error) {
         console.error('Erro ao buscar profissional:', error);
         Alert.alert('Erro', 'Não foi possível carregar os dados do profissional.');
@@ -71,8 +87,8 @@ const EditarProfissionalScreen = ({ navigation, route }) => {
 
   const handleApplyPlan = () => {
     const jsonParcial = {
-      patient_name: "", // será selecionado depois
-      plan_name: "",    // será preenchido depois
+      patient_name: "",
+      plan_name: "",
       aplication_date: new Date().toISOString().slice(0, 10),
       aplicator_name: professional.full_name,
       behaviors: []
@@ -85,45 +101,62 @@ const EditarProfissionalScreen = ({ navigation, route }) => {
 
   const handleUploadFile = async () => {
     try {
-      setIsUploading(true);
-      
-      // Selecionar o arquivo
+      console.log('Clique no botão Adicionar Arquivo');
+  
+      const csrfToken = route.params?.csrfToken;
+      console.log('CSRF Token recebido da rota:', csrfToken);
+  
       const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*', // Aceita qualquer tipo de arquivo
+        type: '*/*',
         copyToCacheDirectory: true,
       });
-
-      if (result.type === 'success') {
-        // Ler o arquivo como base64
-        const fileContent = await FileSystem.readAsStringAsync(result.uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-
-        // Preparar os dados para envio
+  
+      console.log('Resultado da seleção de arquivo:', result);
+  
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        console.log('Arquivo selecionado com sucesso, iniciando upload...');
+        setIsUploading(true);
+  
+        const file = result.assets[0];
+  
         const formData = new FormData();
         formData.append('user_id', professional.user_id);
         formData.append('attachments', {
-          uri: result.uri,
-          name: result.name,
-          type: result.mimeType || 'application/octet-stream',
+          uri: file.uri,
+          name: file.name,
+          type: file.mimeType || 'application/octet-stream',
         });
-
-        // Enviar para o endpoint
+  
+        console.log('Iniciando fetch para upload com headers:');
+        console.log({
+          'Content-Type': 'multipart/form-data',
+          'Referer': 'https://iscdeploy.pythonanywhere.com/',
+          'X-CSRFToken': csrfToken,
+        });
+  
         const response = await fetch('https://iscdeploy.pythonanywhere.com/api/v1/upload-files/', {
           method: 'POST',
           body: formData,
           headers: {
             'Content-Type': 'multipart/form-data',
+            'Referer': 'https://iscdeploy.pythonanywhere.com/',
+            'X-CSRFToken': csrfToken,
           },
         });
-
+  
+        console.log('UPLOAD STATUS:', response.status);
+  
+        const responseText = await response.text();
+        console.log('Upload response:', responseText);
+  
         if (response.ok) {
           Alert.alert('Sucesso', 'Arquivo enviado com sucesso!');
         } else {
-          const errorData = await response.json();
-          console.error('Erro ao enviar arquivo:', errorData);
-          Alert.alert('Erro', 'Não foi possível enviar o arquivo.');
+          console.error('Erro ao enviar arquivo:', response.status, responseText);
+          Alert.alert('Erro', `Não foi possível enviar o arquivo. Código: ${response.status}`);
         }
+      } else {
+        console.log('Usuário cancelou seleção do arquivo ou nenhum arquivo selecionado.');
       }
     } catch (error) {
       console.error('Erro no upload:', error);
@@ -132,6 +165,12 @@ const EditarProfissionalScreen = ({ navigation, route }) => {
       setIsUploading(false);
     }
   };
+  
+  
+  
+  
+  
+  
 
   return (
     <MainLayout 

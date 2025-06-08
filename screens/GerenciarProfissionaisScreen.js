@@ -18,6 +18,7 @@ const GerenciarProfissionaisScreen = ({ navigation }) => {
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [csrfToken, setCsrfToken] = useState('');
 
   const fetchProfissionais = async () => {
     setIsLoading(true);
@@ -37,7 +38,14 @@ const GerenciarProfissionaisScreen = ({ navigation }) => {
   };
 
   useEffect(() => {
-    fetchProfissionais();
+    const initialize = async () => {
+      const token = await AsyncStorage.getItem('csrfToken');
+      console.log('📢 CSRF token carregado:', token);
+      setCsrfToken(token);
+      fetchProfissionais();
+    };
+
+    initialize();
   }, []);
 
   const filteredData = data.filter(item =>
@@ -57,7 +65,6 @@ const GerenciarProfissionaisScreen = ({ navigation }) => {
 
   const deleteProfissional = async (id) => {
     try {
-      const csrfToken = await AsyncStorage.getItem('csrfToken');
       const response = await fetch(`https://iscdeploy.pythonanywhere.com/api/v1/professional/${id}/`, {
         method: 'DELETE',
         headers: {
@@ -80,7 +87,15 @@ const GerenciarProfissionaisScreen = ({ navigation }) => {
   };
 
   const handleEdit = (profissional) => {
-    navigation.navigate('EditarProfissional', { profissional });
+    console.log('📢 Navegando para EditarProfissional com:', {
+      userId: profissional.user_id,
+      csrfToken: csrfToken
+    });
+
+    navigation.navigate('EditarProfissional', { 
+      userId: profissional.user_id,
+      csrfToken: csrfToken
+    });
   };
 
   if (isLoading) {
@@ -115,7 +130,6 @@ const GerenciarProfissionaisScreen = ({ navigation }) => {
       navigation={navigation}
       showBackButton={true}
     >
-      {/* Botões fixos no topo */}
       <View style={styles.tabContainer}>
         <TouchableOpacity style={[styles.tabButton, styles.tabButtonActive]}>
           <Text style={styles.tabButtonTextActive}>Profissionais</Text>
@@ -128,7 +142,6 @@ const GerenciarProfissionaisScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Campo de busca */}
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
@@ -140,7 +153,6 @@ const GerenciarProfissionaisScreen = ({ navigation }) => {
         <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
       </View>
 
-      {/* Lista de profissionais */}
       <ScrollView style={styles.container}>
         {filteredData.length > 0 ? (
           filteredData.map((item) => (

@@ -23,7 +23,7 @@ import EditarPacienteScreen from '../screens/EditarPacienteScreen';
 import GerenciarProfissionaisScreen from '../screens/GerenciarProfissionaisScreen';
 import GerenciarAplicadoresScreen from '../screens/GerenciarAplicadoresScreen';
 import EditarAplicadorScreen from '../screens/EditarAplicadorScreen';
-import EditarProfissionalScreen from '../screens/EditarProfissional';
+import EditarProfissionalScreen from '../screens/EditarProfissionalScreen';
 
 
 const Stack = createStackNavigator();
