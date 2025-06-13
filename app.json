@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "meu-app-psico",
-    "slug": "meu-app-psico",
+    "name": "ISC App",
+    "slug": "ISC App",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icone.jpeg",
+    "icon": "./assets/icone.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -17,7 +17,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icone.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,

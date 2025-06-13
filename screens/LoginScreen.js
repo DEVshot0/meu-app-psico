@@ -104,7 +104,7 @@ const LoginScreen = ({ navigation }) => {
 
         const newCsrf = await fetchCsrfToken();
 
-        alert(`Login realizado com sucesso!\nID: ${userId}\nNível: ${level}`);
+        //alert(`Login realizado com sucesso!\nID: ${userId}\nNível: ${level}`);
         navigation.navigate('Home');
       } else {
         alert(`Erro ao fazer login: ${data?.detail || 'Verifique seus dados'}`);

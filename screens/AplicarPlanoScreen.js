@@ -144,6 +144,7 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 20,
     fontSize: 16,
+    color: "#888"
   },
   autoDate: {
     fontSize: 16,

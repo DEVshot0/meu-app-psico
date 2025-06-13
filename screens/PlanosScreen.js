@@ -144,8 +144,8 @@ const PlanosScreen = ({ navigation }) => {
             <View style={styles.dropdownWrapper}>
               <Picker selectedValue={form.tipo} onValueChange={(value) => setForm({ ...form, tipo: value })}>
                 <Picker.Item label="Tipo do Plano" value="" />
-                <Picker.Item label="Intervenção" value="Intervenção" />
-                <Picker.Item label="Avaliação" value="Avaliação" />
+                <Picker.Item label="Intervenção" value="intervencao" />
+                <Picker.Item label="Avaliação" value="avaliacao" />
               </Picker>
             </View>
             <View style={styles.dropdownWrapper}>
@@ -210,6 +210,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     paddingHorizontal: 15,
     fontSize: 16,
+    color: "#888",
   },
   dropdownWrapper: {
     borderWidth: 1,

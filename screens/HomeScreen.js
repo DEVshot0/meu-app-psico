@@ -20,7 +20,7 @@ const HomeScreen = ({ navigation }) => {
     { label: 'Profissional', icon: 'person-outline', route: 'Profissional' },
     { label: 'Planos', icon: 'document-outline', route: 'Planos' },
     { label: 'Relatórios', icon: 'bar-chart-outline', route: 'Relatorios' },
-    { label: 'Configurações', icon: 'settings-outline', route: 'Configuracoes' },
+    //{ label: 'Configurações', icon: 'settings-outline', route: 'Configuracoes' },
   ];
 
   const getVisibleCards = () => {

@@ -669,6 +669,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     fontSize: 16,
     justifyContent: 'center',
+    color: "#888",
   },
   inputText: {
     fontSize: 16,
