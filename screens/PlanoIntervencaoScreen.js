@@ -12,6 +12,7 @@ import {
 import { Picker } from '@react-native-picker/picker';
 import MainLayout from '../components/MainLayout';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiService } from '../src/services/apiService';
 
 const PlanoIntervencaoScreen = ({ navigation, route }) => {
   const { patientId, jsonParcial } = route.params;

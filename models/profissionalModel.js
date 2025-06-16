@@ -1,0 +1,20 @@
+// models/profissionalModel.js
+export const criarProfissionalVazio = () => ({
+  id: null,
+  user_id: null,
+  full_name: '',
+  birth_date: '',
+  gender: '',
+  nationality: '',
+  addres: '',
+  phone_number: '',
+  cpf: '',
+  rg: '',
+  academic_backgorund: '',
+  especialization: '',
+  position: '',
+  department: '',
+  admission_date: '',
+  work_scale: '',
+  observations: '',
+});

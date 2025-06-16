@@ -12,6 +12,7 @@ import {
 import MainLayout from '../components/MainLayout';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiService } from '../src/services/apiService';
 
 const GerenciarAplicadoresScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');

@@ -16,6 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { apiService } from '../src/services/apiService';
 
 const RegisterScreen = ({ navigation }) => {
   // Dados básicos do usuário

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import MainLayout from '../components/MainLayout';
+import { apiService } from '../src/services/apiService';
 
 const FinalizacaoScreen = ({ navigation, route }) => {
   const { jsonParcial, behaviors } = route.params;

@@ -1,278 +1,189 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import MainLayout from '../components/MainLayout';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
+import { criarProfissionalVazio } from '../models/profissionalModel';
+import { apiService } from '../src/services/apiService';
+import FileUploadSection from '../components/FileUploadSection';
+import FormularioCadastro from '../components/FormularioCadastro';
 
 const EditarProfissionalScreen = ({ navigation, route }) => {
-  const [professional, setProfessional] = useState({});
+  const [formData, setFormData] = useState({
+    ...criarProfissionalVazio(),
+    email: '',
+    username: '',
+    password: '',
+    patient_name: '',
+    patient_birth_date: '',
+    diagnosis_id: null,
+    diagnosis_name: '',
+    consent_form: false
+  });
+
   const [isEditing, setIsEditing] = useState(false);
+  const [attachments, setAttachments] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
+
+  const userId = route.params?.userId;
+  const csrfToken = route.params?.csrfToken;
 
   useEffect(() => {
-    console.log('ROUTE.PARAMS:', route.params);
-
-    const fetchProfessional = async () => {
-      try {
-        if (!route.params?.userId) {
-          console.error('userId não fornecido.');
-          Alert.alert('Erro', 'userId não foi passado.');
-          return;
-        }
-
-        const response = await fetch(`https://iscdeploy.pythonanywhere.com/api/v1/professional/?user_id=${route.params.userId}`);
-        console.log('Response status:', response.status);
-
-        const dataList = await response.json();
-        console.log('Data retornado:', dataList);
-
-        if (Array.isArray(dataList) && dataList.length > 0) {
-          setProfessional(dataList[0]);
-        } else {
-          Alert.alert('Erro', 'Nenhum profissional encontrado para este userId.');
-        }
-      } catch (error) {
-        console.error('Erro ao buscar profissional:', error);
-        Alert.alert('Erro', 'Não foi possível carregar os dados do profissional.');
-      }
-    };
-
-    fetchProfessional();
+    if (!userId) return Alert.alert('Erro', 'userId não foi passado.');
+    fetchData();
   }, []);
 
-  const handleSave = async () => {
+  const fetchData = async () => {
     try {
-      const payload = {
-        full_name: professional.full_name,
-        birth_date: professional.birth_date,
-        gender: professional.gender,
-        nationality: professional.nationality,
-        addres: professional.addres,
-        phone_number: professional.phone_number,
-        cpf: professional.cpf,
-        rg: professional.rg,
-        academic_backgorund: professional.academic_backgorund,
-        especialization: professional.especialization,
-        position: professional.position,
-        department: professional.department,
-        admission_date: professional.admission_date,
-        work_scale: professional.work_scale,
-        observations: professional.observations,
-        user_id: professional.user_id
-      };
-
-      console.log('Payload enviado no PUT:', JSON.stringify(payload, null, 2));
-
-      const response = await fetch(`https://iscdeploy.pythonanywhere.com/api/v1/professional/${professional.id}/`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (response.ok) {
-        setIsEditing(false);
-        Alert.alert('Sucesso', 'Dados do profissional atualizados com sucesso!');
+      const data = await apiService('GET', null, `api/v1/professional/?user_id=${userId}`);
+      if (Array.isArray(data) && data.length > 0) {
+        const prof = data[0];
+        setFormData(prev => ({
+          ...prev,
+          ...prof,
+          email: prof.user?.email || '',
+          username: prof.user?.username || '',
+        }));
+        await fetchAttachments(prof.user_id);
       } else {
-        const errorData = await response.json();
-        console.error('Erro ao atualizar profissional:', response.status, errorData);
-        Alert.alert('Erro', 'Não foi possível atualizar os dados do profissional.');
+        Alert.alert('Erro', 'Nenhum profissional encontrado.');
       }
     } catch (error) {
-      console.error('Erro ao atualizar profissional:', error);
-      Alert.alert('Erro', 'Ocorreu um erro ao tentar atualizar os dados.');
+      Alert.alert('Erro', 'Erro ao carregar dados do profissional.');
     }
   };
 
-  const handleApplyPlan = () => {
-    const jsonParcial = {
-      patient_name: "",
-      plan_name: "",
-      aplication_date: new Date().toISOString().slice(0, 10),
-      aplicator_name: professional.full_name,
-      behaviors: []
-    };
+  const fetchAttachments = async (userId) => {
+    setIsLoadingAttachments(true);
+    try {
+      const data = await apiService('POST', { user_id: userId }, 'api/v1/files-by-user/', csrfToken);
+      setAttachments(data);
+    } catch (error) {
+      Alert.alert('Erro', 'Erro ao carregar anexos.');
+    } finally {
+      setIsLoadingAttachments(false);
+    }
+  };
 
-    console.log('JSON PARCIAL ATÉ O MOMENTO:', JSON.stringify(jsonParcial, null, 2));
-
-    navigation.navigate('AplicarPlano', { jsonParcial });
+  const handleSave = async () => {
+    try {
+      const endpoint = `api/v1/professional/${formData.id}/`;
+      await apiService('PUT', formData, endpoint, csrfToken);
+      setIsEditing(false);
+      Alert.alert('Sucesso', 'Profissional atualizado com sucesso.');
+    } catch (error) {
+      Alert.alert('Erro', 'Erro ao atualizar profissional.');
+    }
   };
 
   const handleUploadFile = async () => {
     try {
-      console.log('Clique no botão Adicionar Arquivo');
-  
-      const csrfToken = route.params?.csrfToken;
-      console.log('CSRF Token recebido da rota:', csrfToken);
-  
-      const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*',
-        copyToCacheDirectory: true,
-      });
-  
-      console.log('Resultado da seleção de arquivo:', result);
-  
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        console.log('Arquivo selecionado com sucesso, iniciando upload...');
+      const result = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
+      if (!result.canceled && result.assets?.length > 0) {
         setIsUploading(true);
-  
         const file = result.assets[0];
-  
-        const formData = new FormData();
-        formData.append('user_id', professional.user_id);
-        formData.append('attachments', {
+
+        const formDataUpload = new FormData();
+        formDataUpload.append('user_id', formData.user_id);
+        formDataUpload.append('attachments', {
           uri: file.uri,
           name: file.name,
           type: file.mimeType || 'application/octet-stream',
         });
-  
-        console.log('Iniciando fetch para upload com headers:');
-        console.log({
-          'Content-Type': 'multipart/form-data',
-          'Referer': 'https://iscdeploy.pythonanywhere.com/',
-          'X-CSRFToken': csrfToken,
-        });
-  
-        const response = await fetch('https://iscdeploy.pythonanywhere.com/api/v1/upload-files/', {
+
+        await fetch('https://iscdeploy.pythonanywhere.com/api/v1/upload-files/', {
           method: 'POST',
-          body: formData,
+          body: formDataUpload,
           headers: {
             'Content-Type': 'multipart/form-data',
             'Referer': 'https://iscdeploy.pythonanywhere.com/',
             'X-CSRFToken': csrfToken,
           },
         });
-  
-        console.log('UPLOAD STATUS:', response.status);
-  
-        const responseText = await response.text();
-        console.log('Upload response:', responseText);
-  
-        if (response.ok) {
-          Alert.alert('Sucesso', 'Arquivo enviado com sucesso!');
-        } else {
-          console.error('Erro ao enviar arquivo:', response.status, responseText);
-          Alert.alert('Erro', `Não foi possível enviar o arquivo. Código: ${response.status}`);
-        }
-      } else {
-        console.log('Usuário cancelou seleção do arquivo ou nenhum arquivo selecionado.');
+
+        Alert.alert('Sucesso', 'Arquivo enviado com sucesso!');
+        await fetchAttachments(formData.user_id);
       }
     } catch (error) {
-      console.error('Erro no upload:', error);
-      Alert.alert('Erro', 'Ocorreu um erro ao tentar enviar o arquivo.');
+      Alert.alert('Erro', 'Erro ao enviar arquivo.');
     } finally {
       setIsUploading(false);
     }
   };
-  
-  
-  
-  
-  
-  
+
+  const handleOpenDiagnostico = () => {
+    navigation.navigate('SelecionarDiagnostico', {
+      onSelect: (diagnostico) => {
+        setFormData((prev) => ({
+          ...prev,
+          diagnosis_id: diagnostico.id,
+          diagnosis_name: diagnostico.nome
+        }));
+      }
+    });
+  };
+
+  const handleApplyPlan = () => {
+    const jsonParcial = {
+      patient_name: '',
+      plan_name: '',
+      aplication_date: new Date().toISOString().slice(0, 10),
+      aplicator_name: formData.full_name,
+      behaviors: []
+    };
+    navigation.navigate('AplicarPlano', { jsonParcial });
+  };
+
+  const handleChange = (key, value, mask = null) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleToggle = (key) => {
+    setFormData(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   return (
-    <MainLayout 
-      title="Editar Profissional" 
-      navigation={navigation} 
-      showBackButton={true}
-    >
+    <MainLayout title="Editar Profissional" navigation={navigation} showBackButton>
       <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.infoContainer}>
-          {isEditing ? (
-            <>
-              <TextInput
-                style={styles.input}
-                value={professional.full_name || ''}
-                onChangeText={(text) => setProfessional({ ...professional, full_name: text })}
-                placeholder="Nome do Profissional"
-              />
-              <TextInput
-                style={styles.input}
-                value={professional.birth_date || ''}
-                onChangeText={(text) => setProfessional({ ...professional, birth_date: text })}
-                placeholder="Data de Nascimento (AAAA-MM-DD)"
-              />
-              <TextInput
-                style={styles.input}
-                value={professional.gender || ''}
-                onChangeText={(text) => setProfessional({ ...professional, gender: text })}
-                placeholder="Gênero"
-              />
-              <TextInput
-                style={styles.input}
-                value={professional.cpf || ''}
-                onChangeText={(text) => setProfessional({ ...professional, cpf: text })}
-                placeholder="CPF"
-              />
-              <TextInput
-                style={styles.input}
-                value={professional.phone_number || ''}
-                onChangeText={(text) => setProfessional({ ...professional, phone_number: text })}
-                placeholder="Telefone"
-              />
-              <TextInput
-                style={styles.input}
-                value={professional.position || ''}
-                onChangeText={(text) => setProfessional({ ...professional, position: text })}
-                placeholder="Cargo"
-              />
-              <TextInput
-                style={styles.input}
-                value={professional.department || ''}
-                onChangeText={(text) => setProfessional({ ...professional, department: text })}
-                placeholder="Departamento"
-              />
-              <TextInput
-                style={styles.input}
-                value={professional.observations || ''}
-                onChangeText={(text) => setProfessional({ ...professional, observations: text })}
-                placeholder="Observações"
-                multiline
-              />
-            </>
-          ) : (
-            <>
-              <Text style={styles.label}><Text style={styles.bold}>Nome:</Text> {professional.full_name}</Text>
-              <Text style={styles.label}><Text style={styles.bold}>CPF:</Text> {professional.cpf}</Text>
-              <Text style={styles.label}><Text style={styles.bold}>Telefone:</Text> {professional.phone_number}</Text>
-              <Text style={styles.label}><Text style={styles.bold}>Cargo:</Text> {professional.position}</Text>
-            </>
-          )}
-        </View>
+        {isEditing ? (
+          <FormularioCadastro
+            formData={formData}
+            onChange={handleChange}
+            onToggle={handleToggle}
+            onSubmit={handleSave}
+            onCancel={() => setIsEditing(false)}
+            isLoading={false}
+            handleOpenDiagnostico={handleOpenDiagnostico}
+          />
+        ) : (
+          <View style={styles.infoContainer}>
+            <Text style={styles.label}><Text style={styles.bold}>Nome:</Text> {formData.full_name}</Text>
+            <Text style={styles.label}><Text style={styles.bold}>CPF:</Text> {formData.cpf}</Text>
+            <Text style={styles.label}><Text style={styles.bold}>Telefone:</Text> {formData.phone_number}</Text>
+            <Text style={styles.label}><Text style={styles.bold}>Cargo:</Text> {formData.position}</Text>
+            <FileUploadSection
+              attachments={attachments}
+              isLoadingAttachments={isLoadingAttachments}
+            />
+          </View>
+        )}
 
         {isEditing ? (
-          <TouchableOpacity 
-            style={styles.saveButton} 
-            onPress={handleSave}
-          >
+          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
             <Text style={styles.saveButtonText}>Salvar alterações</Text>
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity 
-            style={styles.updateButton} 
-            onPress={() => setIsEditing(true)}
-          >
+          <TouchableOpacity style={styles.updateButton} onPress={() => setIsEditing(true)}>
             <Text style={styles.updateButtonText}>Atualizar dados</Text>
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity 
-          style={styles.mainButton} 
-          onPress={handleApplyPlan}
-        >
+        <TouchableOpacity style={styles.mainButton} onPress={handleApplyPlan}>
           <Text style={styles.mainButtonText}>Aplicar Plano</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.uploadButton} 
-          onPress={handleUploadFile}
-          disabled={isUploading}
-        >
-          <Text style={styles.uploadButtonText}>
-            {isUploading ? 'Enviando...' : 'Adicionar Arquivo'}
-          </Text>
+        <TouchableOpacity style={styles.uploadButton} onPress={handleUploadFile} disabled={isUploading}>
+          <Text style={styles.uploadButtonText}>{isUploading ? 'Enviando...' : 'Adicionar Arquivo'}</Text>
         </TouchableOpacity>
       </ScrollView>
     </MainLayout>
@@ -295,17 +206,6 @@ const styles = StyleSheet.create({
   },
   bold: {
     fontWeight: 'bold',
-  },
-  input: {
-    height: 45,
-    borderColor: '#2f6b5e',
-    borderWidth: 1,
-    borderRadius: 10,
-    marginBottom: 10,
-    paddingHorizontal: 15,
-    fontSize: 16,
-    color: '#2f6b5e',
-    backgroundColor: 'white',
   },
   updateButton: {
     alignSelf: 'center',
@@ -347,7 +247,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   uploadButton: {
-    backgroundColor: '#4a7c72',
+    backgroundColor: '#2f6b5e',
     paddingVertical: 15,
     borderRadius: 50,
     alignItems: 'center',

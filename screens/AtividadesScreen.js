@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import MainLayout from '../components/MainLayout';
 
-const AtividadeExecucaoScreen = ({ navigation, route }) => {
+const AtividadesScreen = ({ navigation, route }) => {
   const { activity, tryData, plan_type, jsonParcial, behaviorQueue } = route.params;
 
   const [timer, setTimer] = useState(600);
@@ -220,4 +220,4 @@ const styles = StyleSheet.create({
   }
 });
 
-export default AtividadeExecucaoScreen;
+export default AtividadesScreen;

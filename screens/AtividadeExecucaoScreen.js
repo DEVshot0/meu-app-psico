@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import MainLayout from '../components/MainLayout';
+import { apiService } from '../src/services/apiService';
 
 const AtividadeExecucaoScreen = ({ navigation, route }) => {
   const { activity, tryData, plan_type, jsonParcial, behaviorQueue } = route.params;

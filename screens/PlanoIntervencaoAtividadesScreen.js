@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import MainLayout from '../components/MainLayout';
+import { apiService } from '../src/services/apiService';
 
 // COMPONENT
 

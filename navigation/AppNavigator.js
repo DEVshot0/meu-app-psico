@@ -24,6 +24,8 @@ import GerenciarProfissionaisScreen from '../screens/GerenciarProfissionaisScree
 import GerenciarAplicadoresScreen from '../screens/GerenciarAplicadoresScreen';
 import EditarAplicadorScreen from '../screens/EditarAplicadorScreen';
 import EditarProfissionalScreen from '../screens/EditarProfissionalScreen';
+import CriarPlanoScreen from '../screens/CriarPlanoScreen';
+
 
 
 const Stack = createStackNavigator();
@@ -67,6 +69,7 @@ const AppNavigator = () => {
         <Stack.Screen name="GerenciarAplicadores" component={GerenciarAplicadoresScreen} />
         <Stack.Screen name="EditarAplicador" component={EditarAplicadorScreen} />
         <Stack.Screen name="EditarProfissional" component={EditarProfissionalScreen} />
+        <Stack.Screen name="CriarPlano" component={CriarPlanoScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
