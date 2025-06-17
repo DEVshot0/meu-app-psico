@@ -11,7 +11,7 @@ const RelatoriosScreen = ({ navigation }) => {
   useEffect(() => {
     const fetchApplications = async () => {
       try {
-        const data = await apiService('GET', null, 'api/v1/plans-executions/');
+        const data = await apiService('GET', null, 'api/v1/aplicated_plan/');
         setApplications(data);
       } catch (error) {
         Alert.alert('Erro', 'Não foi possível carregar os relatórios.');

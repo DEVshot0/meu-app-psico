@@ -24,6 +24,7 @@ const CriarPlanoScreen = ({ navigation }) => {
         setPacientes(pacientes);
 
         const behaviors = await apiService('GET', null, 'api/v1/behaviors/');
+        console.log(behaviors);
         setAvailableBehaviors(behaviors);
       } catch (err) {
         console.error('Erro ao carregar dados:', err);
@@ -189,16 +190,20 @@ const CriarPlanoScreen = ({ navigation }) => {
         <Modal visible={showBehaviorModal} transparent={true} animationType="slide">
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
+              {console.log('Dados no momento do render do Modal:', availableBehaviors)}
               <Text style={styles.label}>Selecionar comportamento:</Text>
-              <Picker
-                selectedValue={selectedBehaviorToAdd}
-                onValueChange={(value) => setSelectedBehaviorToAdd(value)}
-              >
-                <Picker.Item label="Selecione um comportamento" value="" />
-                {availableBehaviors.map(b => (
-                  <Picker.Item key={b.id} label={b.behavior_name} value={b.id} />
-                ))}
-              </Picker>
+              <View style={styles.dropdownWrapper}>
+                <Picker
+                  mode="dropdown"
+                  selectedValue={selectedBehaviorToAdd}
+                  onValueChange={(value) => setSelectedBehaviorToAdd(value)}
+                >
+                  <Picker.Item label="Selecione um comportamento" value="" />
+                  {availableBehaviors.map(b => (
+                    <Picker.Item key={b.id} label={b.behavior_name} value={String(b.id)} />
+                  ))}
+                </Picker>
+              </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 }}>
                 <Pressable style={styles.cancelButton} onPress={() => setShowBehaviorModal(false)}>
                   <Text style={styles.submitButtonText}>Cancelar</Text>
