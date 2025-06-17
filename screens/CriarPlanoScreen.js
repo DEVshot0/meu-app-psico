@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView, Modal, Pressable } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import MainLayout from '../components/MainLayout';
 import { apiService } from '../src/services/apiService';
@@ -8,8 +8,14 @@ const CriarPlanoScreen = ({ navigation }) => {
   const [form, setForm] = useState({ nome: '', tipo: '', paciente: '' });
   const [pacientes, setPacientes] = useState([]);
   const [availableBehaviors, setAvailableBehaviors] = useState([]);
-  const [selectedBehaviorPickers, setSelectedBehaviorPickers] = useState([]);
-  const [newBehaviorName, setNewBehaviorName] = useState('');
+  const [selectedBehaviorAux, setSelectedBehaviorAux] = useState([]);
+  const [showBehaviorModal, setShowBehaviorModal] = useState(false);
+  const [showActivityModal, setShowActivityModal] = useState(false);
+  const [plano, setPlano] = useState(null);
+  const [selectedBehaviorToAdd, setSelectedBehaviorToAdd] = useState('');
+  const [newActivity, setNewActivity] = useState({ name: '', tries: '', rewards: '' });
+  const [currentBehaviorAuxId, setCurrentBehaviorAuxId] = useState(null);
+  const [activitiesByBehaviorAux, setActivitiesByBehaviorAux] = useState({});
 
   useEffect(() => {
     const fetchPacientesEComportamentos = async () => {
@@ -19,14 +25,6 @@ const CriarPlanoScreen = ({ navigation }) => {
 
         const behaviors = await apiService('GET', null, 'api/v1/behaviors/');
         setAvailableBehaviors(behaviors);
-        if (behaviors.length > 0) {
-          setSelectedBehaviorPickers([{
-            selectedBehaviorId: behaviors[0].id,
-            newActivityName: '',
-            newActivityTries: '1',
-            activities: []
-          }]);
-        }
       } catch (err) {
         console.error('Erro ao carregar dados:', err);
         Alert.alert('Erro', 'Não foi possível carregar pacientes ou comportamentos');
@@ -36,76 +34,6 @@ const CriarPlanoScreen = ({ navigation }) => {
     fetchPacientesEComportamentos();
   }, []);
 
-  const handleAddBehaviorPicker = () => {
-    setSelectedBehaviorPickers((prev) => [
-      ...prev,
-      { selectedBehaviorId: availableBehaviors[0]?.id || '', newActivityName: '', newActivityTries: '1', activities: [] }
-    ]);
-  };
-
-  const handleRemoveBehaviorPicker = (index) => {
-    const updatedPickers = [...selectedBehaviorPickers];
-    updatedPickers.splice(index, 1);
-    setSelectedBehaviorPickers(updatedPickers);
-  };
-
-  const handleBehaviorChange = (index, value) => {
-    const updatedPickers = [...selectedBehaviorPickers];
-    updatedPickers[index].selectedBehaviorId = value;
-    updatedPickers[index].activities = [];
-    setSelectedBehaviorPickers(updatedPickers);
-  };
-
-  const handleAddNewBehavior = () => {
-    if (newBehaviorName.trim() === '') {
-      Alert.alert('Atenção', 'Digite um nome para o comportamento');
-      return;
-    }
-
-    const newBehavior = {
-      id: `novo-${Date.now()}`,
-      behavior_name: newBehaviorName.trim(),
-      activities: []
-    };
-
-    setAvailableBehaviors((prev) => [...prev, newBehavior]);
-    setSelectedBehaviorPickers((prev) => [
-      ...prev,
-      { selectedBehaviorId: newBehavior.id, newActivityName: '', newActivityTries: '1', activities: [] }
-    ]);
-    setNewBehaviorName('');
-    Alert.alert('Sucesso', 'Comportamento adicionado com sucesso!');
-  };
-
-  const handleActivityNameChange = (index, value) => {
-    const updated = [...selectedBehaviorPickers];
-    updated[index].newActivityName = value;
-    setSelectedBehaviorPickers(updated);
-  };
-
-  const handleActivityTriesChange = (index, value) => {
-    const updated = [...selectedBehaviorPickers];
-    updated[index].newActivityTries = value;
-    setSelectedBehaviorPickers(updated);
-  };
-
-  const handleAddNewActivity = (index) => {
-    const updated = [...selectedBehaviorPickers];
-    const name = updated[index].newActivityName.trim();
-    const tries = parseInt(updated[index].newActivityTries);
-
-    if (!name || isNaN(tries) || tries <= 0) {
-      Alert.alert('Erro', 'Nome e tentativas válidas são obrigatórios');
-      return;
-    }
-
-    updated[index].activities.push({ activity_name: name, tries });
-    updated[index].newActivityName = '';
-    updated[index].newActivityTries = '1';
-    setSelectedBehaviorPickers(updated);
-    Alert.alert('Sucesso', 'Atividade adicionada com sucesso!');
-  };
-
   const handleCadastroPlano = async () => {
     if (!form.nome || !form.tipo || !form.paciente) {
       Alert.alert('Erro', 'Preencha todos os campos!');
@@ -113,134 +41,202 @@ const CriarPlanoScreen = ({ navigation }) => {
     }
 
     try {
-      const plano = await apiService('POST', {
+      const planoCriado = await apiService('POST', {
         plan_name: form.nome,
         plan_type: form.tipo,
         patient_id: form.paciente
       }, 'api/v1/intervention_plan/');
 
-      const planoId = plano.id;
-
-      for (const picker of selectedBehaviorPickers) {
-        await apiService('POST', {
-          plan: planoId,
-          behavior_name: availableBehaviors.find(b => b.id === picker.selectedBehaviorId)?.behavior_name || 'Novo comportamento',
-          activities: picker.activities.map(a => ({ activity_name: a.activity_name, tries: Array.from({ length: a.tries }, () => ({ sleep_time: '0s', result: null, time: null, reward: null })) }))
-        }, 'api/v1/behaviors/');
-      }
-
-      Alert.alert('Sucesso', 'Plano cadastrado com sucesso!');
-      navigation.goBack();
+      setPlano(planoCriado);
+      Alert.alert('Sucesso', 'Plano cadastrado com sucesso! Agora adicione comportamentos.');
     } catch (error) {
       console.error('Erro na requisição:', error);
       Alert.alert('Erro na requisição', error.message);
     }
   };
 
+  const handleAddBehaviorToPlan = async () => {
+    if (!selectedBehaviorToAdd || !plano?.id) return;
+
+    try {
+      const vinculo = await apiService('POST', {
+        plan_id: plano.id,
+        behavior_id: selectedBehaviorToAdd
+      }, 'api/v1/behaviors_aux/');
+
+      setSelectedBehaviorAux(prev => [...prev, vinculo]);
+      setActivitiesByBehaviorAux(prev => ({ ...prev, [vinculo.id]: [] }));
+      setSelectedBehaviorToAdd('');
+      setShowBehaviorModal(false);
+      Alert.alert('Sucesso', 'Comportamento vinculado ao plano!');
+    } catch (err) {
+      console.error('Erro ao vincular comportamento:', err);
+      Alert.alert('Erro', 'Não foi possível vincular o comportamento');
+    }
+  };
+
+  const handleAddActivity = async () => {
+    if (!newActivity.name || !newActivity.tries || (form.tipo !== 'avaliacao' && !newActivity.rewards)) {
+      Alert.alert('Erro', 'Preencha todos os campos da atividade!');
+      return;
+    }
+
+    try {
+      const payload = {
+        activity_name: newActivity.name,
+        tries: parseInt(newActivity.tries),
+        behavior_aux_id: currentBehaviorAuxId
+      };
+      if (form.tipo !== 'avaliacao') {
+        payload.rewards = parseInt(newActivity.rewards);
+      }
+
+      const atividade = await apiService('POST', payload, 'api/v1/activities/');
+
+      setActivitiesByBehaviorAux(prev => ({
+        ...prev,
+        [currentBehaviorAuxId]: [...(prev[currentBehaviorAuxId] || []), atividade]
+      }));
+
+      setShowActivityModal(false);
+      setNewActivity({ name: '', tries: '', rewards: '' });
+      Alert.alert('Sucesso', 'Atividade adicionada!');
+    } catch (err) {
+      console.error('Erro ao adicionar atividade:', err);
+      Alert.alert('Erro', 'Não foi possível adicionar a atividade');
+    }
+  };
+
   return (
     <MainLayout title="Criar Plano" navigation={navigation} showBackButton>
       <ScrollView contentContainerStyle={styles.container}>
-        <TextInput
-          placeholder="Nome do Plano"
-          style={styles.input}
-          value={form.nome}
-          onChangeText={(text) => setForm({ ...form, nome: text })}
-        />
-
-        <View style={styles.dropdownWrapper}>
-          <Picker
-            selectedValue={form.tipo}
-            onValueChange={(value) => setForm({ ...form, tipo: value })}
-          >
-            <Picker.Item label="Tipo do Plano" value="" />
-            <Picker.Item label="Intervenção" value="intervencao" />
-            <Picker.Item label="Avaliação" value="avaliacao" />
-          </Picker>
-        </View>
-
-        <View style={styles.dropdownWrapper}>
-          <Picker
-            selectedValue={form.paciente}
-            onValueChange={(value) => setForm({ ...form, paciente: value })}
-          >
-            <Picker.Item label="Selecione o Paciente" value="" />
-            {pacientes.map((p) => (
-              <Picker.Item key={p.id} label={p.patient_name} value={p.id} />
-            ))}
-          </Picker>
-        </View>
-
-        {form.tipo !== '' && (
+        {!plano ? (
           <>
-            <Text style={styles.label}>Comportamentos do plano:</Text>
-            {selectedBehaviorPickers.map((picker, index) => (
-              <View key={index} style={styles.behaviorRow}>
-                <View style={styles.behaviorInlineRow}>
-                  <View style={styles.behaviorPickerWrapper}>
-                    <Picker
-                      selectedValue={picker.selectedBehaviorId}
-                      onValueChange={(value) => handleBehaviorChange(index, value)}
-                    >
-                      <Picker.Item label="Escolha um comportamento" value="" />
-                      {availableBehaviors.map((b) => (
-                        <Picker.Item key={b.id} label={b.behavior_name} value={b.id} />
-                      ))}
-                    </Picker>
-                  </View>
-                  <TouchableOpacity onPress={() => handleRemoveBehaviorPicker(index)}>
-                    <Text style={styles.removeButton}>🗑️</Text>
-                  </TouchableOpacity>
-                </View>
+            <TextInput
+              placeholder="Nome do Plano"
+              style={styles.input}
+              value={form.nome}
+              onChangeText={(text) => setForm({ ...form, nome: text })}
+            />
 
-                {picker.activities.map((a, i) => (
-                  <Text key={i} style={{ marginBottom: 4 }}>
-                    • {a.activity_name} ({a.tries} tentativa{a.tries > 1 ? 's' : ''})
-                  </Text>
+            <View style={styles.dropdownWrapper}>
+              <Picker
+                selectedValue={form.tipo}
+                onValueChange={(value) => setForm({ ...form, tipo: value })}
+              >
+                <Picker.Item label="Tipo do Plano" value="" />
+                <Picker.Item label="Intervenção" value="intervencao" />
+                <Picker.Item label="Avaliação" value="avaliacao" />
+              </Picker>
+            </View>
+
+            <View style={styles.dropdownWrapper}>
+              <Picker
+                selectedValue={form.paciente}
+                onValueChange={(value) => setForm({ ...form, paciente: value })}
+              >
+                <Picker.Item label="Selecione o Paciente" value="" />
+                {pacientes.map((p) => (
+                  <Picker.Item key={p.id} label={p.patient_name} value={p.id} />
                 ))}
+              </Picker>
+            </View>
 
-                <TextInput
-                  style={styles.input}
-                  placeholder="Nova atividade"
-                  value={picker.newActivityName}
-                  onChangeText={(value) => handleActivityNameChange(index, value)}
-                />
+            <TouchableOpacity style={styles.submitButton} onPress={handleCadastroPlano}>
+              <Text style={styles.submitButtonText}>Cadastrar Plano</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <View style={styles.planoCard}>
+            <Text style={styles.label}>Plano Criado:</Text>
+            <Text>Nome: {plano.plan_name}</Text>
+            <Text>Tipo: {plano.plan_type}</Text>
+            <Text>ID Paciente: {plano.patient_id}</Text>
+          </View>
+        )}
 
-                <TextInput
-                  style={styles.input}
-                  placeholder="Tentativas"
-                  keyboardType="numeric"
-                  value={picker.newActivityTries}
-                  onChangeText={(value) => handleActivityTriesChange(index, value)}
-                />
-
-                <TouchableOpacity style={styles.addButton} onPress={() => handleAddNewActivity(index)}>
-                  <Text style={styles.addButtonText}>Adicionar Atividade</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-
-            <TouchableOpacity style={styles.addButton} onPress={handleAddBehaviorPicker}>
+        {plano && (
+          <>
+            <TouchableOpacity style={styles.addButton} onPress={() => setShowBehaviorModal(true)}>
               <Text style={styles.addButtonText}>Adicionar Comportamento</Text>
             </TouchableOpacity>
 
-            <View style={styles.manualBehaviorSection}>
-              <Text style={styles.label}>Adicionar Comportamento manualmente:</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Novo comportamento"
-                value={newBehaviorName}
-                onChangeText={setNewBehaviorName}
-              />
-              <TouchableOpacity style={styles.addButton} onPress={handleAddNewBehavior}>
-                <Text style={styles.addButtonText}>Adicionar Comportamento manualmente</Text>
-              </TouchableOpacity>
-            </View>
+            {selectedBehaviorAux.map((aux) => {
+              const behavior = availableBehaviors.find(b => b.id === aux.behavior_id);
+              return (
+                <View key={aux.id} style={styles.behaviorRow}>
+                  <Text style={{ fontWeight: 'bold' }}>{behavior?.behavior_name}</Text>
+                  <TouchableOpacity style={styles.addButton} onPress={() => {
+                    setCurrentBehaviorAuxId(aux.id);
+                    setShowActivityModal(true);
+                  }}>
+                    <Text style={styles.addButtonText}>Adicionar Atividade</Text>
+                  </TouchableOpacity>
+                  {(activitiesByBehaviorAux[aux.id] || []).map((act, idx) => (
+                    <View key={idx} style={styles.activityRow}>
+                      <Text>
+                        • {act.activity_name} | Tentativas: {act.tries}
+                        {form.tipo !== 'avaliacao' ? ` | Prêmios: ${act.rewards}` : ''}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              );
+            })}
           </>
         )}
 
-        <TouchableOpacity style={styles.submitButton} onPress={handleCadastroPlano}>
-          <Text style={styles.submitButtonText}>Cadastrar</Text>
-        </TouchableOpacity>
+        <Modal visible={showBehaviorModal} transparent={true} animationType="slide">
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.label}>Selecionar comportamento:</Text>
+              <Picker
+                selectedValue={selectedBehaviorToAdd}
+                onValueChange={(value) => setSelectedBehaviorToAdd(value)}
+              >
+                <Picker.Item label="Selecione um comportamento" value="" />
+                {availableBehaviors.map(b => (
+                  <Picker.Item key={b.id} label={b.behavior_name} value={b.id} />
+                ))}
+              </Picker>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 }}>
+                <Pressable style={styles.cancelButton} onPress={() => setShowBehaviorModal(false)}>
+                  <Text style={styles.submitButtonText}>Cancelar</Text>
+                </Pressable>
+                <Pressable style={styles.submitButton} onPress={handleAddBehaviorToPlan}>
+                  <Text style={styles.submitButtonText}>Adicionar</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal visible={showActivityModal} transparent={true} animationType="slide">
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.label}>Nova Atividade:</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <View style={{ flex: 2, marginRight: 5 }}>
+                  <Text>Nome</Text>
+                  <TextInput style={styles.input} value={newActivity.name} onChangeText={(t) => setNewActivity({ ...newActivity, name: t })} />
+                </View>
+                <View style={{ flex: 1, marginRight: 5 }}>
+                  <Text>Tentativas</Text>
+                  <TextInput keyboardType="numeric" style={styles.input} value={newActivity.tries} onChangeText={(t) => setNewActivity({ ...newActivity, tries: t })} />
+                </View>
+                {form.tipo !== 'avaliacao' && (
+                  <View style={{ flex: 1 }}>
+                    <Text>Prêmios</Text>
+                    <TextInput keyboardType="numeric" style={styles.input} value={newActivity.rewards} onChangeText={(t) => setNewActivity({ ...newActivity, rewards: t })} />
+                  </View>
+                )}
+              </View>
+              <Pressable style={[styles.submitButton, { marginTop: 20 }]} onPress={handleAddActivity}>
+                <Text style={styles.submitButtonText}>Salvar Atividade</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </MainLayout>
   );
@@ -277,48 +273,64 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  label: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 10
-  },
-  behaviorRow: {
-    marginBottom: 20
-  },
-  behaviorInlineRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10
-  },
-  behaviorPickerWrapper: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#2f6b5e',
-    borderRadius: 10,
-    overflow: 'hidden'
-  },
-  removeButton: {
-    fontSize: 24,
-    color: '#e74c3c',
-    marginLeft: 10
-  },
   addButton: {
     backgroundColor: '#2f6b5e',
     padding: 12,
     borderRadius: 10,
     alignItems: 'center',
-    marginBottom: 20
+    marginBottom: 10,
+    marginTop: 10,
   },
   addButtonText: {
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16
   },
-  manualBehaviorSection: {
-    borderTopWidth: 1,
+  behaviorRow: {
+    marginBottom: 20,
+    padding: 10,
+    backgroundColor: '#f3f3f3',
+    borderRadius: 10,
+    borderColor: '#ddd',
+    borderWidth: 1
+  },
+  activityRow: {
+    paddingVertical: 5,
+    paddingLeft: 10
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  modalContent: {
+    width: '90%',
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 20,
+    elevation: 5
+  },
+  cancelButton: {
+    backgroundColor: '#999',
+    padding: 15,
+    borderRadius: 80,
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 10
+  },
+  planoCard: {
+    padding: 15,
+    marginVertical: 10,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
     borderColor: '#ccc',
-    paddingTop: 15,
-    marginTop: 10
+    borderWidth: 1
+  },
+  label: {
+    fontWeight: 'bold',
+    marginBottom: 5,
+    fontSize: 16
   }
 });
 
