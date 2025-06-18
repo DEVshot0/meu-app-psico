@@ -6,6 +6,19 @@ import { criarPacienteVazio } from '../models/PacienteModel';
 import { apiService } from '../src/services/apiService';
 import FileUploadSection from '../components/FileUploadSection';
 import FormularioCadastro from '../components/FormularioCadastro';
+import { mask } from 'react-native-mask-text';
+
+const camposFormularioPaciente = [
+  { tipo: 'titulo', label: 'Responsável' },
+  { nome: 'email', placeholder: 'Email*' },
+  { nome: 'username', placeholder: 'Username*' },
+  { nome: 'password', placeholder: 'Senha*', tipo: 'password' },
+  { tipo: 'titulo', label: 'Paciente' },
+  { nome: 'patient_name', placeholder: 'Nome do Paciente*' },
+  { nome: 'diagnosis_name', tipo: 'customButton', placeholder: 'Selecione o Diagnóstico*' },
+  { nome: 'patient_birth_date', placeholder: 'Nascimento do Paciente*', teclado: 'numeric', mascara: '99/99/9999', maxLength: 10 },
+  { nome: 'consent_form', tipo: 'checkbox', label: 'Termo de Consentimento' }
+];
 
 const EditarPacienteScreen = ({ navigation, route }) => {
   const [formData, setFormData] = useState({
@@ -85,12 +98,15 @@ const EditarPacienteScreen = ({ navigation, route }) => {
     }
   };
 
-  const handleToggle = (key) => {
-    setFormData(prev => ({ ...prev, [key]: !prev[key] }));
+  const handleToggle = (campo) => {
+    setFormData(prev => ({ ...prev, [campo]: !prev[campo] }));
   };
 
-  const handleChange = (key, value, mask = null) => {
-    setFormData(prev => ({ ...prev, [key]: value }));
+  const handleChange = (campo, valor, mascara = null) => {
+    setFormData(prev => ({
+      ...prev,
+      [campo]: mascara ? mask(valor, mascara) : valor
+    }));
   };
 
   const handleOpenDiagnostico = () => {
@@ -109,13 +125,14 @@ const EditarPacienteScreen = ({ navigation, route }) => {
     <MainLayout title="Editar Paciente" navigation={navigation} showBackButton>
       <ScrollView contentContainerStyle={styles.container}>
         <FormularioCadastro
+          campos={camposFormularioPaciente}
           formData={formData}
           onChange={handleChange}
           onToggle={handleToggle}
           onSubmit={handleSave}
           onCancel={() => setIsEditing(false)}
           isLoading={false}
-          handleOpenDiagnostico={handleOpenDiagnostico}
+          onCustomPress={{ diagnosis_name: handleOpenDiagnostico }}
         />
 
         <FileUploadSection

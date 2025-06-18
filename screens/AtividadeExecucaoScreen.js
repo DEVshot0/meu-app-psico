@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput } from 'react-native';
 import MainLayout from '../components/MainLayout';
-import { apiService } from '../src/services/apiService';
 
 const AtividadeExecucaoScreen = ({ navigation, route }) => {
   const { activity, tryData, plan_type, jsonParcial, behaviorQueue } = route.params;
@@ -9,12 +8,13 @@ const AtividadeExecucaoScreen = ({ navigation, route }) => {
   const [timer, setTimer] = useState(600);
   const [showPremioModal, setShowPremioModal] = useState(false);
   const [pendingResult, setPendingResult] = useState(null);
+  const [showInput, setShowInput] = useState(false);
+  const [premioText, setPremioText] = useState('');
 
   useEffect(() => {
     const interval = setInterval(() => {
       setTimer((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
-
     return () => clearInterval(interval);
   }, []);
 
@@ -26,7 +26,6 @@ const AtividadeExecucaoScreen = ({ navigation, route }) => {
 
   const finalizeAndGoBack = (finalResult) => {
     try {
-      // Atualiza o tryData diretamente
       tryData.result = finalResult.result;
       tryData.time = finalResult.time;
       tryData.reward = finalResult.reward;
@@ -39,7 +38,6 @@ const AtividadeExecucaoScreen = ({ navigation, route }) => {
       console.error('❌ ERRO AO ATUALIZAR TRYDATA:', error);
     }
 
-    // Não é mais necessário chamar onActivityComplete (ExecucaoPlano já gerencia)
     console.log('🔙 Voltando para ExecucaoPlanoScreen...');
     navigation.goBack();
   };
@@ -51,39 +49,46 @@ const AtividadeExecucaoScreen = ({ navigation, route }) => {
       setPendingResult({ result, executionTime });
       setShowPremioModal(true);
     } else {
-      const finalResult = {
+      finalizeAndGoBack({
         result,
         time: executionTime,
         reward: null
-      };
-
-      finalizeAndGoBack(finalResult);
+      });
     }
   };
 
-  const handlePremioResponse = (houvePremio) => {
-    console.log(`Premio: ${houvePremio ? 'Sim' : 'Não'}`);
-    setShowPremioModal(false);
+  const handlePremioSim = () => {
+    setShowInput(true);
+  };
 
-    const finalResult = {
+  const handlePremioNao = () => {
+    setShowPremioModal(false);
+    finalizeAndGoBack({
       result: pendingResult.result,
       time: pendingResult.executionTime,
-      reward: houvePremio ? 'Sim' : 'Não'
-    };
+      reward: 'Não'
+    });
+    setPremioText('');
+    setShowInput(false);
+  };
 
-    finalizeAndGoBack(finalResult);
+  const handlePremioConfirm = () => {
+    setShowPremioModal(false);
+    finalizeAndGoBack({
+      result: pendingResult.result,
+      time: pendingResult.executionTime,
+      reward: premioText.trim() || 'Sim'
+    });
+    setPremioText('');
+    setShowInput(false);
   };
 
   const handleSkipActivity = () => {
-    console.log('Atividade pulada!');
-
-    const finalResult = {
+    finalizeAndGoBack({
       result: 'pulado',
       time: null,
       reward: null
-    };
-
-    finalizeAndGoBack(finalResult);
+    });
   };
 
   return (
@@ -92,59 +97,51 @@ const AtividadeExecucaoScreen = ({ navigation, route }) => {
         <Text style={styles.activityName}>{activity.activity_name}</Text>
         <Text style={styles.timer}>{formatTime(timer)}</Text>
 
-        <TouchableOpacity
-          style={[styles.resultButton, { backgroundColor: '#4CAF50' }]}
-          onPress={() => handleResult('fez')}
-        >
+        <TouchableOpacity style={[styles.resultButton, { backgroundColor: '#4CAF50' }]} onPress={() => handleResult('fez')}>
           <Text style={styles.resultButtonText}>Fez</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.resultButton, { backgroundColor: '#FFC107' }]}
-          onPress={() => handleResult('fez_com_ajuda')}
-        >
+        <TouchableOpacity style={[styles.resultButton, { backgroundColor: '#FFC107' }]} onPress={() => handleResult('fez_com_ajuda')}>
           <Text style={styles.resultButtonText}>Fez com ajuda</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.resultButton, { backgroundColor: '#F44336' }]}
-          onPress={() => handleResult('nao_fez')}
-        >
+        <TouchableOpacity style={[styles.resultButton, { backgroundColor: '#F44336' }]} onPress={() => handleResult('nao_fez')}>
           <Text style={styles.resultButtonText}>Não fez</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.skipButton}
-          onPress={handleSkipActivity}
-        >
+        <TouchableOpacity style={styles.skipButton} onPress={handleSkipActivity}>
           <Text style={styles.skipButtonText}>Pular Atividade</Text>
         </TouchableOpacity>
 
-        <Modal
-          visible={showPremioModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowPremioModal(false)}
-        >
+        <Modal visible={showPremioModal} transparent animationType="fade" onRequestClose={() => setShowPremioModal(false)}>
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Houve prêmio?</Text>
-
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={styles.modalButton}
-                  onPress={() => handlePremioResponse(true)}
-                >
-                  <Text style={styles.modalButtonText}>Sim</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.modalButton}
-                  onPress={() => handlePremioResponse(false)}
-                >
-                  <Text style={styles.modalButtonText}>Não</Text>
-                </TouchableOpacity>
-              </View>
+              {!showInput ? (
+                <>
+                  <Text style={styles.modalTitle}>Houve prêmio?</Text>
+                  <View style={styles.modalButtons}>
+                    <TouchableOpacity style={styles.modalButton} onPress={handlePremioSim}>
+                      <Text style={styles.modalButtonText}>Sim</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.modalButton} onPress={handlePremioNao}>
+                      <Text style={styles.modalButtonText}>Não</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.modalTitle}>Qual o prêmio?</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Descreva o prêmio..."
+                    value={premioText}
+                    onChangeText={setPremioText}
+                  />
+                  <TouchableOpacity style={[styles.modalButton, { marginTop: 15 }]} onPress={handlePremioConfirm}>
+                    <Text style={styles.modalButtonText}>Confirmar</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           </View>
         </Modal>
@@ -154,80 +151,35 @@ const AtividadeExecucaoScreen = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1
-  },
-  activityName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 10
-  },
-  timer: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    marginBottom: 30
-  },
+  container: { padding: 20, alignItems: 'center', justifyContent: 'center', flex: 1 },
+  activityName: { fontSize: 24, fontWeight: 'bold', marginBottom: 10 },
+  timer: { fontSize: 48, fontWeight: 'bold', marginBottom: 30 },
   resultButton: {
-    padding: 15,
-    borderRadius: 10,
-    width: '80%',
-    alignItems: 'center',
-    marginBottom: 15
+    padding: 15, borderRadius: 10, width: '80%', alignItems: 'center', marginBottom: 15
   },
-  resultButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 18
-  },
+  resultButtonText: { color: 'white', fontWeight: 'bold', fontSize: 18 },
   skipButton: {
-    position: 'absolute',
-    bottom: 20,
-    width: '80%',
-    padding: 15,
-    backgroundColor: '#9E9E9E',
-    borderRadius: 10,
-    alignItems: 'center'
+    position: 'absolute', bottom: 20, width: '80%', padding: 15, backgroundColor: '#9E9E9E',
+    borderRadius: 10, alignItems: 'center'
   },
-  skipButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16
-  },
+  skipButtonText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
   modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center'
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center'
   },
   modalContent: {
-    backgroundColor: 'white',
-    padding: 25,
-    borderRadius: 10,
-    alignItems: 'center'
+    backgroundColor: 'white', padding: 25, borderRadius: 10, alignItems: 'center', width: '80%'
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 20
-  },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
   modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center'
   },
   modalButton: {
-    backgroundColor: '#2f6b5e',
-    padding: 15,
-    borderRadius: 10,
-    marginHorizontal: 15
+    backgroundColor: '#2f6b5e', padding: 15, borderRadius: 10, marginHorizontal: 15
   },
-  modalButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16
+  modalButtonText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
+  input: {
+    borderWidth: 1, borderColor: '#ccc', borderRadius: 8,
+    padding: 10, width: '100%', textAlign: 'center', marginTop: 10
   }
 });
 

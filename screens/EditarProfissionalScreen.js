@@ -6,20 +6,38 @@ import { criarProfissionalVazio } from '../models/profissionalModel';
 import { apiService } from '../src/services/apiService';
 import FileUploadSection from '../components/FileUploadSection';
 import FormularioCadastro from '../components/FormularioCadastro';
+import { mask } from 'react-native-mask-text';
+
+const camposFormularioProfissional = [
+  { tipo: 'titulo', label: 'Usuário' },
+  { nome: 'email', placeholder: 'Email*' },
+  { nome: 'username', placeholder: 'Username*' },
+  { nome: 'password', placeholder: 'Senha*', tipo: 'password' },
+  { tipo: 'titulo', label: 'Profissional' },
+  { nome: 'full_name', placeholder: 'Nome Completo*' },
+  { nome: 'birth_date', placeholder: 'Data de Nascimento', teclado: 'numeric', mascara: '99/99/9999', maxLength: 10 },
+  { nome: 'gender', placeholder: 'Gênero' },
+  { nome: 'nationality', placeholder: 'Nacionalidade' },
+  { nome: 'address', placeholder: 'Endereço' },
+  { nome: 'phone_number', placeholder: 'Telefone', teclado: 'phone-pad', mascara: '(99) 99999-9999', maxLength: 15 },
+  { nome: 'cpf', placeholder: 'CPF', teclado: 'numeric', mascara: '999.999.999-99', maxLength: 14 },
+  { nome: 'rg', placeholder: 'RG' },
+  { nome: 'academic_background', placeholder: 'Formação Acadêmica' },
+  { nome: 'especialization', placeholder: 'Especialização' },
+  { nome: 'position', placeholder: 'Cargo' },
+  { nome: 'department', placeholder: 'Departamento' },
+  { nome: 'admission_date', placeholder: 'Data de Admissão', teclado: 'numeric', mascara: '99/99/9999', maxLength: 10 },
+  { nome: 'work_scale', placeholder: 'Escala de Trabalho' },
+  { nome: 'observations', placeholder: 'Observações' }
+];
 
 const EditarProfissionalScreen = ({ navigation, route }) => {
   const [formData, setFormData] = useState({
     ...criarProfissionalVazio(),
     email: '',
     username: '',
-    password: '',
-    patient_name: '',
-    patient_birth_date: '',
-    diagnosis_id: null,
-    diagnosis_name: '',
-    consent_form: false
+    password: ''
   });
-
   const [isEditing, setIsEditing] = useState(false);
   const [attachments, setAttachments] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -42,7 +60,7 @@ const EditarProfissionalScreen = ({ navigation, route }) => {
           ...prev,
           ...prof,
           email: prof.user?.email || '',
-          username: prof.user?.username || '',
+          username: prof.user?.username || ''
         }));
         await fetchAttachments(prof.user_id);
       } else {
@@ -111,35 +129,15 @@ const EditarProfissionalScreen = ({ navigation, route }) => {
     }
   };
 
-  const handleOpenDiagnostico = () => {
-    navigation.navigate('SelecionarDiagnostico', {
-      onSelect: (diagnostico) => {
-        setFormData((prev) => ({
-          ...prev,
-          diagnosis_id: diagnostico.id,
-          diagnosis_name: diagnostico.nome
-        }));
-      }
-    });
+  const handleChange = (campo, valor, mascara = null) => {
+    setFormData(prev => ({
+      ...prev,
+      [campo]: mascara ? mask(valor, mascara) : valor
+    }));
   };
 
-  const handleApplyPlan = () => {
-    const jsonParcial = {
-      patient_name: '',
-      plan_name: '',
-      aplication_date: new Date().toISOString().slice(0, 10),
-      aplicator_name: formData.full_name,
-      behaviors: []
-    };
-    navigation.navigate('AplicarPlano', { jsonParcial });
-  };
-
-  const handleChange = (key, value, mask = null) => {
-    setFormData(prev => ({ ...prev, [key]: value }));
-  };
-
-  const handleToggle = (key) => {
-    setFormData(prev => ({ ...prev, [key]: !prev[key] }));
+  const handleToggle = (campo) => {
+    setFormData(prev => ({ ...prev, [campo]: !prev[campo] }));
   };
 
   return (
@@ -147,13 +145,13 @@ const EditarProfissionalScreen = ({ navigation, route }) => {
       <ScrollView contentContainerStyle={styles.container}>
         {isEditing ? (
           <FormularioCadastro
+            campos={camposFormularioProfissional}
             formData={formData}
             onChange={handleChange}
             onToggle={handleToggle}
             onSubmit={handleSave}
             onCancel={() => setIsEditing(false)}
             isLoading={false}
-            handleOpenDiagnostico={handleOpenDiagnostico}
           />
         ) : (
           <View style={styles.infoContainer}>
@@ -177,10 +175,6 @@ const EditarProfissionalScreen = ({ navigation, route }) => {
             <Text style={styles.updateButtonText}>Atualizar dados</Text>
           </TouchableOpacity>
         )}
-
-        <TouchableOpacity style={styles.mainButton} onPress={handleApplyPlan}>
-          <Text style={styles.mainButtonText}>Aplicar Plano</Text>
-        </TouchableOpacity>
 
         <TouchableOpacity style={styles.uploadButton} onPress={handleUploadFile} disabled={isUploading}>
           <Text style={styles.uploadButtonText}>{isUploading ? 'Enviando...' : 'Adicionar Arquivo'}</Text>
@@ -232,18 +226,6 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: 'bold',
-  },
-  mainButton: {
-    backgroundColor: '#2f6b5e',
-    paddingVertical: 15,
-    borderRadius: 50,
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  mainButtonText: {
-    color: 'white',
-    fontSize: 18,
     fontWeight: 'bold',
   },
   uploadButton: {

@@ -1,54 +1,103 @@
-// components/FormularioCadastro.js
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  StyleSheet,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 const FormularioCadastro = ({
+  campos,
   formData,
   onChange,
   onToggle,
   onSubmit,
   onCancel,
   isLoading,
-  handleOpenDiagnostico
+  onCustomPress = {},
 }) => {
   return (
     <View>
-      <Text style={styles.sectionTitle}>Responsável</Text>
+      {campos.map((campo, index) => {
+        if (campo.tipo === 'titulo') {
+          return (
+            <Text key={index} style={styles.sectionTitle}>
+              {campo.label}
+            </Text>
+          );
+        }
 
-      <TextInput style={styles.input} placeholder="Email*" value={formData.email} onChangeText={t => onChange('email', t)} />
-      <TextInput style={styles.input} placeholder="Username*" value={formData.username} onChangeText={t => onChange('username', t)} />
-      <TextInput style={styles.input} placeholder="Password*" secureTextEntry value={formData.password} onChangeText={t => onChange('password', t)} />
-      <TextInput style={styles.input} placeholder="Nome Completo*" value={formData.full_name} onChangeText={t => onChange('full_name', t)} />
-      <TextInput style={styles.input} placeholder="Data de Nascimento*" value={formData.birth_date} onChangeText={t => onChange('birth_date', t, '99/99/9999')} keyboardType="numeric" maxLength={10} />
-      <TextInput style={styles.input} placeholder="Telefone*" value={formData.phone_number} onChangeText={t => onChange('phone_number', t, '(99) 99999-9999')} keyboardType="phone-pad" maxLength={15} />
+        if (campo.tipo === 'checkbox') {
+          return (
+            <View key={campo.nome} style={styles.checkboxContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.checkbox,
+                  formData[campo.nome] && styles.checkboxChecked,
+                ]}
+                onPress={() => onToggle(campo.nome)}
+              >
+                {formData[campo.nome] && (
+                  <Ionicons name="checkmark" size={20} color="white" />
+                )}
+              </TouchableOpacity>
+              <Text style={styles.checkboxLabel}>{campo.label}</Text>
+            </View>
+          );
+        }
 
-      <Text style={styles.sectionTitle}>Paciente</Text>
-      <TextInput style={styles.input} placeholder="Nome do Paciente*" value={formData.patient_name} onChangeText={t => onChange('patient_name', t)} />
-      
-      <TouchableOpacity style={styles.input} onPress={handleOpenDiagnostico}>
-        <Text style={formData.diagnosis_name ? styles.inputText : styles.placeholderText}>
-          {formData.diagnosis_name || 'Selecione o Diagnóstico*'}
-        </Text>
+        if (campo.tipo === 'customButton') {
+          return (
+            <TouchableOpacity
+              key={campo.nome}
+              style={styles.input}
+              onPress={onCustomPress[campo.nome]}
+            >
+              <Text
+                style={
+                  formData[campo.nome] ? styles.inputText : styles.placeholderText
+                }
+              >
+                {formData[campo.nome] || campo.placeholder}
+              </Text>
+            </TouchableOpacity>
+          );
+        }
+
+        return (
+          <TextInput
+            key={campo.nome}
+            style={styles.input}
+            placeholder={campo.placeholder}
+            secureTextEntry={campo.tipo === 'password'}
+            value={formData[campo.nome]}
+            onChangeText={(t) => onChange(campo.nome, t, campo.mascara)}
+            keyboardType={campo.teclado || 'default'}
+            maxLength={campo.maxLength || undefined}
+          />
+        );
+      })}
+
+      <TouchableOpacity
+        style={styles.submitButton}
+        onPress={onSubmit}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <ActivityIndicator color="white" />
+        ) : (
+          <Text style={styles.submitButtonText}>Cadastrar</Text>
+        )}
       </TouchableOpacity>
 
-      <TextInput style={styles.input} placeholder="Data de Nascimento*" value={formData.patient_birth_date} onChangeText={t => onChange('patient_birth_date', t, '99/99/9999')} keyboardType="numeric" maxLength={10} />
-
-      <View style={styles.checkboxContainer}>
-        <TouchableOpacity
-          style={[styles.checkbox, formData.consent_form && styles.checkboxChecked]}
-          onPress={() => onToggle('consent_form')}
-        >
-          {formData.consent_form && <Ionicons name="checkmark" size={20} color="white" />}
-        </TouchableOpacity>
-        <Text style={styles.checkboxLabel}>Termo de Consentimento</Text>
-      </View>
-
-      <TouchableOpacity style={styles.submitButton} onPress={onSubmit} disabled={isLoading}>
-        {isLoading ? <ActivityIndicator color="white" /> : <Text style={styles.submitButtonText}>Cadastrar</Text>}
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.cancelButton} onPress={onCancel} disabled={isLoading}>
+      <TouchableOpacity
+        style={styles.cancelButton}
+        onPress={onCancel}
+        disabled={isLoading}
+      >
         <Text style={styles.cancelButtonText}>Cancelar</Text>
       </TouchableOpacity>
     </View>
@@ -66,7 +115,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     fontSize: 16,
     justifyContent: 'center',
-    color: "#555",
+    color: '#555',
   },
   inputText: { fontSize: 16, color: 'black' },
   placeholderText: { fontSize: 16, color: 'rgba(0,0,0,0.5)' },
@@ -88,13 +137,14 @@ const styles = StyleSheet.create({
   cancelButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
   checkboxContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
   checkbox: {
-    width: 24, height: 24,
+    width: 24,
+    height: 24,
     borderWidth: 1,
     borderColor: '#2f6b5e',
     borderRadius: 4,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10
+    marginRight: 10,
   },
   checkboxChecked: { backgroundColor: '#2f6b5e' },
   checkboxLabel: { fontSize: 16 },

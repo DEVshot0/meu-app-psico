@@ -12,6 +12,7 @@ const HomeScreen = ({ navigation }) => {
     const fetchLevel = async () => {
       const level = await AsyncStorage.getItem('userLevel');
       setUserLevel(Number(level)); // converte para número
+      console.log("teste")
     };
     fetchLevel();
   }, []);

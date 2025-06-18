@@ -1,16 +1,56 @@
 import React, { useState } from 'react';
 import {
-  View, StyleSheet, Alert, Dimensions,
-  KeyboardAvoidingView, Platform, ScrollView
+  View,
+  StyleSheet,
+  Alert,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView
 } from 'react-native';
 import MainLayout from '../components/MainLayout';
 import SquareCard from '../components/SquareCard';
 import { mask as masker } from 'react-native-mask-text';
-
 import { apiService } from '../src/services/apiService';
 import FormularioCadastro from '../components/FormularioCadastro';
 import DiagnosticoModal from '../components/DiagnosticoModal';
 import { pacienteModel } from '../models/PacienteModel';
+
+const camposFormularioPaciente = [
+  { tipo: 'titulo', label: 'Responsável' },
+  { nome: 'email', placeholder: 'Email*' },
+  { nome: 'username', placeholder: 'Usuário*' },
+  { nome: 'password', placeholder: 'Senha*', tipo: 'password' },
+  { nome: 'full_name', placeholder: 'Nome Completo*' },
+  { nome: 'birth_date', placeholder: 'Data de Nascimento*', teclado: 'numeric', mascara: '99/99/9999', maxLength: 10 },
+  { nome: 'gender', placeholder: 'Gênero' },
+  { nome: 'nationality', placeholder: 'Nacionalidade' },
+  { nome: 'address', placeholder: 'Endereço' },
+  { nome: 'phone_number', placeholder: 'Telefone*', teclado: 'phone-pad', mascara: '(99) 99999-9999', maxLength: 15 },
+  { nome: 'cpf', placeholder: 'CPF', teclado: 'numeric', mascara: '999.999.999-99', maxLength: 14 },
+  { nome: 'rg', placeholder: 'RG' },
+
+  { tipo: 'titulo', label: 'Paciente' },
+  { nome: 'patient_name', placeholder: 'Nome do Paciente*' },
+  { nome: 'diagnosis_name', tipo: 'customButton', placeholder: 'Selecione o Diagnóstico*' },
+  { nome: 'patient_birth_date', placeholder: 'Nascimento do Paciente*', teclado: 'numeric', mascara: '99/99/9999', maxLength: 10 },
+  { nome: 'patient_gender', placeholder: 'Gênero' },
+  { nome: 'patient_nationality', placeholder: 'Nacionalidade' },
+  { nome: 'patient_cpf', placeholder: 'CPF', teclado: 'numeric', mascara: '999.999.999-99', maxLength: 14 },
+  { nome: 'patient_rg', placeholder: 'RG' },
+  { nome: 'agreement_card', placeholder: 'Convênio' },
+  { nome: 'sus_card', placeholder: 'Cartão SUS' },
+  { nome: 'medical_history', placeholder: 'Histórico Médico' },
+  { nome: 'allergies', placeholder: 'Alergias' },
+  { nome: 'medication_in_use', placeholder: 'Medicamentos em uso' },
+  { nome: 'familiar_history', placeholder: 'Histórico Familiar' },
+  { nome: 'first_consultation', placeholder: 'Primeira Consulta', teclado: 'numeric', mascara: '99/99/9999', maxLength: 10 },
+  { nome: 'observations', placeholder: 'Observações' },
+
+  { tipo: 'titulo', label: 'Consentimentos' },
+  { nome: 'consent_form', tipo: 'checkbox', label: 'Termo de Consentimento' },
+  { nome: 'authorization_to_share_data', tipo: 'checkbox', label: 'Autorização para Compartilhar Dados' }
+];
 
 const PacienteScreen = ({ navigation }) => {
   const [showForm, setShowForm] = useState(false);
@@ -22,7 +62,7 @@ const PacienteScreen = ({ navigation }) => {
   const handleInputChange = (field, value, mask = null) => {
     let newValue = value;
     if (mask) {
-      newValue = masker(newValue, mask, {
+      newValue = masker(value, mask, {
         maskAutomatically: field.includes('birth_date') || field.includes('consultation')
       });
     }
@@ -148,13 +188,14 @@ const PacienteScreen = ({ navigation }) => {
         {showForm ? (
           <ScrollView contentContainerStyle={{ padding: 15 }}>
             <FormularioCadastro
+              campos={camposFormularioPaciente}
               formData={formData}
               onChange={handleInputChange}
               onToggle={toggleCheckbox}
               onSubmit={handleSubmit}
               onCancel={() => setShowForm(false)}
               isLoading={isLoading}
-              handleOpenDiagnostico={() => setShowDiagnosisModal(true)}
+              onCustomPress={{ diagnosis_name: () => setShowDiagnosisModal(true) }}
             />
           </ScrollView>
         ) : (

@@ -4,7 +4,6 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import MainLayout from '../components/MainLayout';
 import { useFocusEffect } from '@react-navigation/native';
 import { usePlanoExecucao } from '../hooks/usePlanoExecucao';
-import { apiService } from '../src/services/apiService';
 
 const ExecucaoPlanoScreen = ({ navigation, route }) => {
   const { patientId, planoId, jsonParcial, behaviors, plan_type: paramPlanType } = route.params;
@@ -104,7 +103,14 @@ const ExecucaoPlanoScreen = ({ navigation, route }) => {
     const currentActivity = currentBehavior.activities[currentActivityIndex];
     const currentTry = currentActivity.tries[currentTryIndex];
 
-    currentTry.sleep_time = '5s';
+    // Define o sleep_time com base no tempo decorrido
+    const formatSleepTime = (seconds) => {
+      if (seconds < 60) return `${seconds}s`;
+      const m = Math.floor(seconds / 60);
+      return `${m}m`;
+    };
+
+    currentTry.sleep_time = formatSleepTime(elapsedTime);
     setBehaviorQueue(updatedQueue);
 
     navigation.navigate('AtividadeExecucao', {

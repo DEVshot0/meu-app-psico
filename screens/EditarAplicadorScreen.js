@@ -1,10 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 import MainLayout from '../components/MainLayout';
 import FormularioCadastro from '../components/FormularioCadastro';
 import { criarAplicadorVazio } from '../models/aplicatorModel';
 import { apiService } from '../src/services/apiService';
 import * as DocumentPicker from 'expo-document-picker';
+import { mask } from 'react-native-mask-text';
+
+const camposFormularioAplicador = [
+  { tipo: 'titulo', label: 'Usuário' },
+  { nome: 'email', placeholder: 'Email*' },
+  { nome: 'username', placeholder: 'Username*' },
+  { nome: 'password', placeholder: 'Senha*', tipo: 'password' },
+  { tipo: 'titulo', label: 'Aplicador' },
+  { nome: 'full_name', placeholder: 'Nome Completo*' },
+  { nome: 'birth_date', placeholder: 'Data de Nascimento', teclado: 'numeric', mascara: '99/99/9999', maxLength: 10 },
+  { nome: 'gender', placeholder: 'Gênero' },
+  { nome: 'nationality', placeholder: 'Nacionalidade' },
+  { nome: 'address', placeholder: 'Endereço' },
+  { nome: 'phone_number', placeholder: 'Telefone', teclado: 'phone-pad', mascara: '(99) 99999-9999', maxLength: 15 },
+  { nome: 'cpf', placeholder: 'CPF', teclado: 'numeric', mascara: '999.999.999-99', maxLength: 14 },
+  { nome: 'rg', placeholder: 'RG' },
+  { nome: 'academic_background', placeholder: 'Formação Acadêmica' },
+  { nome: 'position', placeholder: 'Cargo' },
+  { nome: 'department', placeholder: 'Departamento' },
+  { nome: 'admission_date', placeholder: 'Data de Admissão', teclado: 'numeric', mascara: '99/99/9999', maxLength: 10 },
+  { nome: 'work_scale', placeholder: 'Escala de Trabalho' },
+  { nome: 'observations', placeholder: 'Observações' },
+  { tipo: 'titulo', label: 'Paciente Vinculado' },
+  { nome: 'patient_name', placeholder: 'Nome do Paciente' },
+  { nome: 'diagnosis_name', tipo: 'customButton', placeholder: 'Selecione o Diagnóstico' },
+  { nome: 'patient_birth_date', placeholder: 'Nascimento do Paciente', teclado: 'numeric', mascara: '99/99/9999', maxLength: 10 },
+  { nome: 'consent_form', tipo: 'checkbox', label: 'Termo de Consentimento' }
+];
 
 const EditarAplicadorScreen = ({ navigation, route }) => {
   const [formData, setFormData] = useState({
@@ -16,7 +52,7 @@ const EditarAplicadorScreen = ({ navigation, route }) => {
     patient_birth_date: '',
     diagnosis_id: null,
     diagnosis_name: '',
-    consent_form: false
+    consent_form: false,
   });
   const [isEditing, setIsEditing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -39,7 +75,7 @@ const EditarAplicadorScreen = ({ navigation, route }) => {
     try {
       const data = await apiService.get(`/aplicator/?user_id=${userId}`);
       if (Array.isArray(data) && data.length > 0) {
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           ...data[0],
           email: data[0].user?.email || '',
@@ -48,7 +84,7 @@ const EditarAplicadorScreen = ({ navigation, route }) => {
           patient_birth_date: data[0].patient_birth_date || '',
           diagnosis_id: data[0].diagnosis_id || null,
           diagnosis_name: data[0].diagnosis_name || '',
-          consent_form: data[0].consent_form || false
+          consent_form: data[0].consent_form || false,
         }));
         carregarAnexos();
       } else {
@@ -73,20 +109,12 @@ const EditarAplicadorScreen = ({ navigation, route }) => {
     }
   };
 
-  const handleInputChange = (key, value, mask = null) => {
-    setFormData({ ...formData, [key]: value });
-  };
-
-  const handleToggle = (key) => {
-    setFormData(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
   const handleSubmit = async () => {
     try {
       const payload = {
         ...formData,
         role: 'aplicator',
-        phone_number: formData.phone_number.replace(/\D/g, '')
+        phone_number: formData.phone_number.replace(/\D/g, ''),
       };
       await apiService.put(`/aplicator/${formData.id}/`, payload, csrfToken);
       setIsEditing(false);
@@ -127,9 +155,9 @@ const EditarAplicadorScreen = ({ navigation, route }) => {
         setFormData((prev) => ({
           ...prev,
           diagnosis_id: diagnostico.id,
-          diagnosis_name: diagnostico.nome
+          diagnosis_name: diagnostico.nome,
         }));
-      }
+      },
     });
   };
 
@@ -153,13 +181,21 @@ const EditarAplicadorScreen = ({ navigation, route }) => {
         ) : (
           <>
             <FormularioCadastro
+              campos={camposFormularioAplicador}
               formData={formData}
-              onChange={handleInputChange}
-              onToggle={handleToggle}
+              onChange={(campo, valor, mascara) => {
+                setFormData((prev) => ({
+                  ...prev,
+                  [campo]: mascara ? mask(valor, mascara) : valor,
+                }));
+              }}
+              onToggle={(campo) => {
+                setFormData((prev) => ({ ...prev, [campo]: !prev[campo] }));
+              }}
               onSubmit={handleSubmit}
               onCancel={() => setIsEditing(false)}
               isLoading={false}
-              handleOpenDiagnostico={handleOpenDiagnostico}
+              onCustomPress={{ diagnosis_name: handleOpenDiagnostico }}
             />
 
             {isEditing ? (
@@ -167,7 +203,10 @@ const EditarAplicadorScreen = ({ navigation, route }) => {
                 <Text style={styles.saveButtonText}>Salvar alterações</Text>
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity style={styles.updateButton} onPress={() => setIsEditing(true)}>
+              <TouchableOpacity
+                style={styles.updateButton}
+                onPress={() => setIsEditing(true)}
+              >
                 <Text style={styles.updateButtonText}>Atualizar dados</Text>
               </TouchableOpacity>
             )}
@@ -176,7 +215,11 @@ const EditarAplicadorScreen = ({ navigation, route }) => {
               <Text style={styles.mainButtonText}>Aplicar Plano</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.uploadButton} onPress={handleUploadFile} disabled={isUploading}>
+            <TouchableOpacity
+              style={styles.uploadButton}
+              onPress={handleUploadFile}
+              disabled={isUploading}
+            >
               <Text style={styles.uploadButtonText}>
                 {isUploading ? 'Enviando...' : 'Adicionar Arquivo'}
               </Text>
@@ -187,7 +230,9 @@ const EditarAplicadorScreen = ({ navigation, route }) => {
               <ActivityIndicator color="#2f6b5e" />
             ) : attachments.length > 0 ? (
               attachments.map((a, i) => (
-                <Text key={i} style={styles.attachmentItem}>{a.attachments.split('/').pop()}</Text>
+                <Text key={i} style={styles.attachmentItem}>
+                  {a.attachments.split('/').pop()}
+                </Text>
               ))
             ) : (
               <Text style={styles.label}>Nenhum anexo encontrado.</Text>
@@ -202,19 +247,36 @@ const EditarAplicadorScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: { padding: 20 },
   saveButton: {
-    backgroundColor: '#2f6b5e', borderRadius: 25, padding: 10, alignItems: 'center', marginBottom: 10,
+    backgroundColor: '#2f6b5e',
+    borderRadius: 25,
+    padding: 10,
+    alignItems: 'center',
+    marginBottom: 10,
   },
   saveButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
   updateButton: {
-    borderWidth: 2, borderColor: '#2f6b5e', borderRadius: 25, padding: 10, alignItems: 'center', marginBottom: 10,
+    borderWidth: 2,
+    borderColor: '#2f6b5e',
+    borderRadius: 25,
+    padding: 10,
+    alignItems: 'center',
+    marginBottom: 10,
   },
   updateButtonText: { color: '#2f6b5e', fontSize: 16, fontWeight: 'bold' },
   mainButton: {
-    backgroundColor: '#2f6b5e', borderRadius: 25, padding: 15, alignItems: 'center', marginBottom: 15,
+    backgroundColor: '#2f6b5e',
+    borderRadius: 25,
+    padding: 15,
+    alignItems: 'center',
+    marginBottom: 15,
   },
   mainButtonText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
   uploadButton: {
-    backgroundColor: '#4a7c72', padding: 15, borderRadius: 25, alignItems: 'center', marginBottom: 15,
+    backgroundColor: '#4a7c72',
+    padding: 15,
+    borderRadius: 25,
+    alignItems: 'center',
+    marginBottom: 15,
   },
   uploadButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
   attachmentsTitle: { fontSize: 18, fontWeight: 'bold', marginTop: 20 },
