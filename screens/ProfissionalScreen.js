@@ -138,6 +138,7 @@ const ProfissionalScreen = ({ navigation }) => {
         <ScrollView contentContainerStyle={{ padding: 15 }}>
           <FormularioCadastro
             campos={camposFormularioProfissional}
+            placeholderTextColor="#A9A9A9"
             formData={formData}
             onChange={handleInputChange}
             onToggle={handleToggle}

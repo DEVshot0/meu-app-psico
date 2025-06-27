@@ -152,6 +152,7 @@ const PlanoAvaliacaoAtividadesScreen = ({ navigation, route }) => {
                     onValueChange={(value) =>
                       handleActivityChange(behaviorIndex, activityIndex, value)
                     }
+                    style={{ color: '#6A6A6A' }}
                   >
                     <Picker.Item label="Escolha uma atividade" value="" />
                     {behavior.availableActivities.map((a) => (
@@ -190,6 +191,7 @@ const PlanoAvaliacaoAtividadesScreen = ({ navigation, route }) => {
             <TextInput
               style={styles.input}
               placeholder="Nome da nova atividade"
+              placeholderTextColor="#A9A9A9"
               value={behavior.newActivityName}
               onChangeText={(value) =>
                 handleNewActivityNameChange(behaviorIndex, value)
@@ -198,6 +200,7 @@ const PlanoAvaliacaoAtividadesScreen = ({ navigation, route }) => {
             <TextInput
               style={styles.input}
               placeholder="Tentativas"
+              placeholderTextColor="#A9A9A9"
               keyboardType="numeric"
               value={behavior.newActivityTries}
               onChangeText={(value) =>

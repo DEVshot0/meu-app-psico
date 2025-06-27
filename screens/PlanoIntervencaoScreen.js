@@ -210,6 +210,7 @@ const PlanoIntervencaoScreen = ({ navigation, route }) => {
                   <Picker
                     selectedValue={picker.selectedBehaviorId}
                     onValueChange={(value) => handleBehaviorChange(index, value)}
+                    style={{ color: '#6A6A6A' }}
                   >
                     <Picker.Item label="Escolha um comportamento" value="" />
                     {availableBehaviors.map((b) => (
@@ -232,6 +233,7 @@ const PlanoIntervencaoScreen = ({ navigation, route }) => {
             <TextInput
               style={styles.input}
               placeholder="Nome do novo comportamento"
+              placeholderTextColor="#A9A9A9"
               value={newBehaviorName}
               onChangeText={setNewBehaviorName}
             />

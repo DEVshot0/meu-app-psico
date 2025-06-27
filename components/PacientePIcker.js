@@ -11,6 +11,7 @@ const PacientePicker = ({ pacientes, selectedId, onSelect }) => {
           const paciente = pacientes.find(p => p.id === value);
           onSelect(value, paciente?.patient_name || '');
         }}
+        style={{ color: '#6A6A6A' }}
       >
         <Picker.Item label="Escolha um paciente" value="" />
         {pacientes.map(p => (

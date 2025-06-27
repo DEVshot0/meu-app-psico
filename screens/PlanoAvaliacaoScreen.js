@@ -198,7 +198,7 @@ const PlanoAvaliacaoScreen = ({ navigation, route }) => {
         <Text style={styles.label}>Selecione um Plano de Avaliação:</Text>
 
         <View style={styles.pickerWrapper}>
-          <Picker selectedValue={selectedPlanoId} onValueChange={handlePlanoChange}>
+          <Picker selectedValue={selectedPlanoId} onValueChange={handlePlanoChange} style={{ color: '#6A6A6A' }} >
             <Picker.Item label="Escolha um plano" value="" />
             {planos.map((plano) => (
               <Picker.Item key={plano.id} label={plano.plan_name} value={plano.id} />
@@ -227,6 +227,7 @@ const PlanoAvaliacaoScreen = ({ navigation, route }) => {
                   <Picker
                     selectedValue={picker.selectedBehaviorId}
                     onValueChange={(value) => handleBehaviorChange(index, value)}
+                    style={{ color: '#6A6A6A' }}
                   >
                     <Picker.Item label="Escolha um comportamento" value="" />
                     {availableBehaviors.map((b) => (
@@ -250,6 +251,7 @@ const PlanoAvaliacaoScreen = ({ navigation, route }) => {
               style={styles.input}
               placeholder="Nome do novo comportamento"
               value={newBehaviorName}
+              placeholderTextColor="#A9A9A9"
               onChangeText={setNewBehaviorName}
             />
 

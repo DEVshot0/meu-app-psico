@@ -188,6 +188,7 @@ const EditarAplicadorScreen = ({ navigation, route }) => {
                   ...prev,
                   [campo]: mascara ? mask(valor, mascara) : valor,
                 }));
+                
               }}
               onToggle={(campo) => {
                 setFormData((prev) => ({ ...prev, [campo]: !prev[campo] }));
@@ -196,6 +197,7 @@ const EditarAplicadorScreen = ({ navigation, route }) => {
               onCancel={() => setIsEditing(false)}
               isLoading={false}
               onCustomPress={{ diagnosis_name: handleOpenDiagnostico }}
+              placeholderTextColor="#A9A9A9"
             />
 
             {isEditing ? (

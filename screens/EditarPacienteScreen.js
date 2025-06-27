@@ -131,6 +131,7 @@ const EditarPacienteScreen = ({ navigation, route }) => {
           onToggle={handleToggle}
           onSubmit={handleSave}
           onCancel={() => setIsEditing(false)}
+          placeholderTextColor="#A9A9A9"
           isLoading={false}
           onCustomPress={{ diagnosis_name: handleOpenDiagnostico }}
         />

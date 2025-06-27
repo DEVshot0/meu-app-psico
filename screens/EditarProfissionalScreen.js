@@ -152,6 +152,7 @@ const EditarProfissionalScreen = ({ navigation, route }) => {
             onSubmit={handleSave}
             onCancel={() => setIsEditing(false)}
             isLoading={false}
+            placeholderTextColor="#A9A9A9"
           />
         ) : (
           <View style={styles.infoContainer}>

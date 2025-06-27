@@ -136,6 +136,7 @@ const AtividadeExecucaoScreen = ({ navigation, route }) => {
                     placeholder="Descreva o prêmio..."
                     value={premioText}
                     onChangeText={setPremioText}
+                    placeholderTextColor="#A9A9A9"
                   />
                   <TouchableOpacity style={[styles.modalButton, { marginTop: 15 }]} onPress={handlePremioConfirm}>
                     <Text style={styles.modalButtonText}>Confirmar</Text>

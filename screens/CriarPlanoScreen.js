@@ -118,12 +118,14 @@ const CriarPlanoScreen = ({ navigation }) => {
               style={styles.input}
               value={form.nome}
               onChangeText={(text) => setForm({ ...form, nome: text })}
+              placeholderTextColor="#A9A9A9"
             />
 
             <View style={styles.dropdownWrapper}>
               <Picker
                 selectedValue={form.tipo}
                 onValueChange={(value) => setForm({ ...form, tipo: value })}
+                style={{ color: '#6A6A6A' }}
               >
                 <Picker.Item label="Tipo do Plano" value="" />
                 <Picker.Item label="Intervenção" value="intervencao" />
@@ -135,6 +137,7 @@ const CriarPlanoScreen = ({ navigation }) => {
               <Picker
                 selectedValue={form.paciente}
                 onValueChange={(value) => setForm({ ...form, paciente: value })}
+                style={{ color: '#6A6A6A' }}
               >
                 <Picker.Item label="Selecione o Paciente" value="" />
                 {pacientes.map((p) => (
@@ -197,6 +200,7 @@ const CriarPlanoScreen = ({ navigation }) => {
                   mode="dropdown"
                   selectedValue={selectedBehaviorToAdd}
                   onValueChange={(value) => setSelectedBehaviorToAdd(value)}
+                  style={{ color: '#6A6A6A' }}
                 >
                   <Picker.Item label="Selecione um comportamento" value="" />
                   {availableBehaviors.map(b => (

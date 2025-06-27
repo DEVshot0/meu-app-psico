@@ -172,6 +172,7 @@ const RegisterScreen = ({ navigation }) => {
     <>
       <TextInput 
         placeholder="Nome completo*"
+        placeholderTextColor="#A9A9A9"
         value={fullName}
         onChangeText={setFullName}
         style={styles.input}
@@ -205,6 +206,7 @@ const RegisterScreen = ({ navigation }) => {
       
       <TextInput 
         placeholder="Nacionalidade"
+        placeholderTextColor="#A9A9A9"
         value={nationality}
         onChangeText={setNationality}
         style={styles.input}
@@ -212,6 +214,7 @@ const RegisterScreen = ({ navigation }) => {
       
       <TextInput 
         placeholder="Endereço"
+        placeholderTextColor="#A9A9A9"
         value={address}
         onChangeText={setAddress}
         style={styles.input}
@@ -219,6 +222,7 @@ const RegisterScreen = ({ navigation }) => {
       
       <TextInput 
         placeholder="Telefone"
+        placeholderTextColor="#A9A9A9"
         value={phoneNumber}
         onChangeText={setPhoneNumber}
         keyboardType="phone-pad"
@@ -227,6 +231,7 @@ const RegisterScreen = ({ navigation }) => {
       
       <TextInput 
         placeholder="CPF"
+        placeholderTextColor="#A9A9A9"
         value={cpf}
         onChangeText={setCpf}
         keyboardType="numeric"
@@ -235,6 +240,7 @@ const RegisterScreen = ({ navigation }) => {
       
       <TextInput 
         placeholder="RG"
+        placeholderTextColor="#A9A9A9"
         value={rg}
         onChangeText={setRg}
         keyboardType="numeric"
@@ -247,6 +253,7 @@ const RegisterScreen = ({ navigation }) => {
     <>
       <TextInput 
         placeholder="Nome da instituição*"
+        placeholderTextColor="#A9A9A9"
         value={institutionName}
         onChangeText={setInstitutionName}
         style={styles.input}
@@ -254,6 +261,7 @@ const RegisterScreen = ({ navigation }) => {
       
       <TextInput 
         placeholder="Registro profissional*"
+        placeholderTextColor="#A9A9A9"
         value={professionalRegistration}
         onChangeText={setProfessionalRegistration}
         style={styles.input}
@@ -261,6 +269,7 @@ const RegisterScreen = ({ navigation }) => {
       
       <TextInput 
         placeholder="Cargo*"
+        placeholderTextColor="#A9A9A9"
         value={adminPosition}
         onChangeText={setAdminPosition}
         style={styles.input}
@@ -275,6 +284,7 @@ const RegisterScreen = ({ navigation }) => {
         value={academicBackground}
         onChangeText={setAcademicBackground}
         style={styles.input}
+        placeholderTextColor="#A9A9A9"
       />
       
       <TextInput 
@@ -282,6 +292,7 @@ const RegisterScreen = ({ navigation }) => {
         value={specialization}
         onChangeText={setSpecialization}
         style={styles.input}
+        placeholderTextColor="#A9A9A9"
       />
       
       <TextInput 
@@ -289,6 +300,7 @@ const RegisterScreen = ({ navigation }) => {
         value={professionalPosition}
         onChangeText={setProfessionalPosition}
         style={styles.input}
+        placeholderTextColor="#A9A9A9"
       />
       
       <TextInput 
@@ -296,6 +308,7 @@ const RegisterScreen = ({ navigation }) => {
         value={department}
         onChangeText={setDepartment}
         style={styles.input}
+        placeholderTextColor="#A9A9A9"
       />
       
       <TextInput 
@@ -303,6 +316,7 @@ const RegisterScreen = ({ navigation }) => {
         value={workScale}
         onChangeText={setWorkScale}
         style={styles.input}
+        placeholderTextColor="#A9A9A9"
       />
       
       <TextInput 
@@ -310,6 +324,7 @@ const RegisterScreen = ({ navigation }) => {
         value={observations}
         onChangeText={setObservations}
         style={styles.input}
+        placeholderTextColor="#A9A9A9"
         multiline
       />
     </>
@@ -322,6 +337,7 @@ const RegisterScreen = ({ navigation }) => {
         value={academicBackground}
         onChangeText={setAcademicBackground}
         style={styles.input}
+        placeholderTextColor="#A9A9A9"
       />
       
       <TextInput 
@@ -329,6 +345,7 @@ const RegisterScreen = ({ navigation }) => {
         value={aplicatorPosition}
         onChangeText={setAplicatorPosition}
         style={styles.input}
+        placeholderTextColor="#A9A9A9"
       />
       
       <TextInput 
@@ -336,6 +353,7 @@ const RegisterScreen = ({ navigation }) => {
         value={department}
         onChangeText={setDepartment}
         style={styles.input}
+        placeholderTextColor="#A9A9A9"
       />
       
       <TextInput 
@@ -343,6 +361,7 @@ const RegisterScreen = ({ navigation }) => {
         value={workScale}
         onChangeText={setWorkScale}
         style={styles.input}
+        placeholderTextColor="#A9A9A9"
       />
       
       <TextInput 
@@ -350,6 +369,7 @@ const RegisterScreen = ({ navigation }) => {
         value={observations}
         onChangeText={setObservations}
         style={styles.input}
+        placeholderTextColor="#A9A9A9"
         multiline
       />
     </>
@@ -385,6 +405,7 @@ const RegisterScreen = ({ navigation }) => {
                 value={email}
                 onChangeText={setEmail}
                 style={styles.input}
+                placeholderTextColor="#A9A9A9"
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
@@ -394,6 +415,7 @@ const RegisterScreen = ({ navigation }) => {
                 value={username}
                 onChangeText={setUsername}
                 style={styles.input}
+                placeholderTextColor="#A9A9A9"
                 autoCapitalize="none"
               />
               
@@ -403,6 +425,7 @@ const RegisterScreen = ({ navigation }) => {
                 onChangeText={setPassword}
                 secureTextEntry
                 style={styles.input}
+                placeholderTextColor="#A9A9A9"
               />
               
               <TextInput 
@@ -411,6 +434,7 @@ const RegisterScreen = ({ navigation }) => {
                 onChangeText={setConfirmPassword}
                 secureTextEntry
                 style={styles.input}
+                placeholderTextColor="#A9A9A9"
               />
 
               <Text style={styles.sectionTitle}>Dados Pessoais</Text>
@@ -517,6 +541,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     borderRadius: 10,
     marginBottom: 15,
+    color: '#6A6A6A'
   },
   registerButton: {
     backgroundColor: '#2f6b5e',

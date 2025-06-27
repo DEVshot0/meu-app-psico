@@ -194,6 +194,7 @@ const PacienteScreen = ({ navigation }) => {
               onToggle={toggleCheckbox}
               onSubmit={handleSubmit}
               onCancel={() => setShowForm(false)}
+              placeholderTextColor="#A9A9A9"
               isLoading={isLoading}
               onCustomPress={{ diagnosis_name: () => setShowDiagnosisModal(true) }}
             />

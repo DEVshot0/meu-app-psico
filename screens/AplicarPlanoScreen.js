@@ -59,6 +59,7 @@ const AplicarPlanoScreen = ({ navigation }) => {
           placeholder="Digite o nome do aplicador"
           value={aplicatorName}
           onChangeText={setAplicatorName}
+          placeholderTextColor="#A9A9A9"
         />
 
         <Text style={styles.label}>Data da aplicação:</Text>
